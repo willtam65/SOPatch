@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SOPatch -- AI-Powered SOP Update Detection</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=DM+Sans:wght@400;500&family=DM+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/style.css"/>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div>
+    <div class="header-logo">SOPatch</div>
+    <div class="header-tagline">AI-powered SOP update detection for CX and Ops teams</div>
+  </div>
+  <div class="header-badge">v0.1 -- Active Development</div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Left Panel: Input -->
+  <div class="left-panel">
+    <div class="card">
+      <div class="card-title">Release Note or Policy Change</div>
+      <textarea
+        id="release-note"
+        class="release-note-textarea"
+        placeholder="Paste your release note, policy update, or internal change memo here..."
+      >{{ release_note }}</textarea>
+      <div class="input-hint">
+        No specific format required. SOPatch reads the content and automatically identifies which SOPs need updating.
+      </div>
+
+      <button class="btn-analyze" id="btn-analyze" onclick="runAnalysis()">
+        <span>Analyze SOPs</span>
+      </button>
+
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <span id="loading-text">Finding affected SOPs and analyzing changes...</span>
+      </div>
+
+      <div class="error-bar" id="error-bar"></div>
+    </div>
+
+    <div class="footer">
+      SOPatch v0.1 &mdash; Built by Will Tam &mdash;
+      <a href="https://github.com/willtam65/sopatch" target="_blank" style="color:#aaa;">GitHub</a>
+    </div>
+  </div>
+
+  <!-- Right Panel: Results -->
+  <div class="right-panel">
+    <div class="summary-bar" id="summary-bar"></div>
+    <div id="results-container">
+      <div class="empty-state">
+        <div class="empty-state-icon">⟳</div>
+        <div class="empty-state-text">Paste a release note and click <strong>Analyze SOPs</strong> to get started.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Store analysis results globally so push buttons can access them by index
+  let analysisResults = [];
+  let currentReleaseNote = '';
+
+  async function runAnalysis() {
+    const releaseNote = document.getElementById('release-note').value.trim();
+    currentReleaseNote = releaseNote;
+    if (!releaseNote) {
+      showError('Please paste a release note before analyzing.');
+      return;
+    }
+
+    setLoading(true);
+    clearResults();
+    hideError();
+
+    try {
+      const response = await fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ release_note: releaseNote })
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        showError(data.error);
+        return;
+      }
+
+      analysisResults = data.results;
+      renderResults(data);
+
+    } catch (err) {
+      console.error('SOPatch error:', err);
+      showError('Something went wrong: ' + (err.message || err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderResults(data) {
+    const summaryBar = document.getElementById('summary-bar');
+    const container = document.getElementById('results-container');
+
+    // Summary bar with select-all + bulk push
+    summaryBar.style.display = 'block';
+    const unaffectedNames = data.unaffected_sops || [];
+    summaryBar.innerHTML = `
+      <div class="summary-row">
+        <label class="select-all-label">
+          <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"/>
+          <span><strong>${data.affected_count} SOP${data.affected_count !== 1 ? 's' : ''} flagged</strong> for review</span>
+        </label>
+        <div class="summary-actions">
+          ${unaffectedNames.length > 0 ? `
+            <span class="summary-unaffected">
+              ${unaffectedNames.length} unaffected: ${unaffectedNames.map(n => `<span class="unaffected-name">${escapeHtml(n)}</span>`).join('')}
+            </span>` : ''}
+          <button class="btn-bulk-push" id="btn-bulk-push" onclick="bulkPush()" disabled>
+            Push Selected to Confluence
+          </button>
+        </div>
+      </div>
+    `;
+
+    if (data.affected_count === 0) {
+      container.innerHTML = `<div class="card" style="color:#888;text-align:center;padding:40px;">No SOPs were affected by this release note.</div>`;
+      return;
+    }
+
+    // Render each affected SOP
+    try {
+    container.innerHTML = data.results.map((r, i) => `
+      <div class="sop-card" id="sop-card-${i}">
+        <div class="sop-card-header">
+          <label class="sop-checkbox-label">
+            <input
+              type="checkbox"
+              class="sop-checkbox"
+              id="checkbox-${i}"
+              onchange="updateBulkButton()"
+            />
+          </label>
+          <div style="flex:1;">
+            <div class="sop-card-title">${escapeHtml(r.title)}</div>
+          </div>
+          <div class="sop-tags">
+            ${r.matching_tags && r.matching_tags.length > 0
+              ? r.matching_tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')
+              : '<span class="tag tag-ai">AI matched</span>'
+            }
+          </div>
+        </div>
+        <div class="sop-card-body">
+          <div class="analysis-label">Flagged sections and suggested rewrites</div>
+          ${renderAnalysis(r.analysis, i, r.title)}
+          <div class="full-sop-content" id="full-sop-${i}">
+            <pre class="sop-pre">${escapeHtml(r.sop_content)}</pre>
+          </div>
+          <div class="card-footer">
+            <div class="full-sop-toggle" onclick="toggleSOP(${i})">
+              <span id="sop-toggle-label-${i}">Preview full SOP</span>
+              <span class="toggle-arrow" id="sop-toggle-arrow-${i}">▸</span>
+            </div>
+            <div class="card-footer-right">
+              <div id="confluence-result-${i}"></div>
+              <button class="btn-push" id="btn-push-${i}" onclick="pushToConfluence(${i})">
+                <span>Push to Confluence</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    } catch (renderErr) {
+      console.error('Render error:', renderErr);
+      container.innerHTML = `<div class="card" style="color:#dc2626;padding:20px;">Render error: ${escapeHtml(renderErr.message)}</div>`;
+    }
+  }
+
+  function toggleSelectAll(checkbox) {
+    document.querySelectorAll('.sop-checkbox').forEach(cb => {
+      cb.checked = checkbox.checked;
+    });
+    updateBulkButton();
+  }
+
+  function updateBulkButton() {
+    const allCheckboxes = document.querySelectorAll('.sop-checkbox');
+    const checkedBoxes = document.querySelectorAll('.sop-checkbox:checked');
+    const checked = checkedBoxes.length;
+    const total = allCheckboxes.length;
+
+    // Update card highlight
+    allCheckboxes.forEach(cb => {
+      const card = document.getElementById(`sop-card-${cb.id.replace('checkbox-', '')}`);
+      if (card) card.classList.toggle('checked', cb.checked);
+    });
+
+    const bulkBtn = document.getElementById('btn-bulk-push');
+    const selectAll = document.getElementById('select-all');
+    if (bulkBtn) {
+      bulkBtn.disabled = checked === 0;
+      bulkBtn.textContent = checked > 0
+        ? `Push ${checked} Selected to Confluence`
+        : 'Push Selected to Confluence';
+    }
+    if (selectAll) {
+      selectAll.indeterminate = checked > 0 && checked < total;
+      selectAll.checked = checked === total && total > 0;
+    }
+  }
+
+  async function bulkPush() {
+    const checkboxes = document.querySelectorAll('.sop-checkbox:checked');
+    const indices = Array.from(checkboxes).map(cb => parseInt(cb.id.replace('checkbox-', '')));
+
+    const bulkBtn = document.getElementById('btn-bulk-push');
+    bulkBtn.disabled = true;
+    bulkBtn.textContent = `Pushing 0 / ${indices.length}...`;
+
+    let done = 0;
+    for (const index of indices) {
+      await pushToConfluence(index);
+      done++;
+      bulkBtn.textContent = `Pushing ${done} / ${indices.length}...`;
+    }
+
+    bulkBtn.textContent = `Pushed ${done} to Confluence`;
+    bulkBtn.classList.add('success');
+  }
+
+  // Rebuild analysis text from DOM (reflects any edits the user made)
+  function getEditedAnalysis(sopIndex) {
+    const cards = document.querySelectorAll(`.section-card[data-sop="${sopIndex}"]`);
+    if (cards.length === 0) return analysisResults[sopIndex].analysis;
+
+    let text = '';
+    cards.forEach(card => {
+      const rewriteBody = card.querySelector('.rewrite-body');
+      const editedRewrite = rewriteBody ? rewriteBody.innerText.trim() : card.dataset.cur;
+      text += `---\nSECTION: ${card.dataset.name}\nCURRENT WORDING: ${card.dataset.cur}\nWHY OUTDATED: ${card.dataset.why}\nSUGGESTED REWRITE: ${editedRewrite}\n---\n`;
+    });
+    return text;
+  }
+
+  async function pushToConfluence(index) {
+    const r = analysisResults[index];
+    const btn = document.getElementById(`btn-push-${index}`);
+    const resultDiv = document.getElementById(`confluence-result-${index}`);
+
+    btn.disabled = true;
+    btn.querySelector('span').textContent = 'Pushing to Confluence...';
+
+    const editedAnalysis = getEditedAnalysis(index);
+
+    try {
+      const response = await fetch('/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          page_id: r.page_id,
+          analysis: editedAnalysis,
+          title: r.title
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        btn.disabled = false;
+        btn.querySelector('span').textContent = 'Push to Confluence';
+        resultDiv.innerHTML = `<div style="color:#c62828;font-size:12px;margin-top:8px;">Error: ${escapeHtml(data.error)}</div>`;
+        return;
+      }
+
+      btn.classList.add('success');
+      btn.querySelector('span').textContent = 'Pushed to Confluence';
+      resultDiv.innerHTML = `
+        <a class="confluence-link" href="${escapeHtml(data.url)}" target="_blank">
+          View updated page (v${data.new_version}) in Confluence
+        </a>
+      `;
+
+    } catch (err) {
+      btn.disabled = false;
+      btn.querySelector('span').textContent = 'Push to Confluence';
+      resultDiv.innerHTML = `<div style="color:#c62828;font-size:12px;margin-top:8px;">Connection error. Please try again.</div>`;
+    }
+  }
+
+  function toggleSOP(index) {
+    const content = document.getElementById(`full-sop-${index}`);
+    const label = document.getElementById(`sop-toggle-label-${index}`);
+    const arrow = document.getElementById(`sop-toggle-arrow-${index}`);
+    const open = content.classList.toggle('open');
+    label.textContent = open ? 'Hide full SOP' : 'Preview full SOP';
+    arrow.textContent = open ? '▾' : '▸';
+
+    // Build diff preview on first open
+    if (open && !content.dataset.diffBuilt) {
+      const r = analysisResults[index];
+      content.innerHTML = buildSOPPreview(r.sop_content, getSectionsFromDOM(index));
+      content.dataset.diffBuilt = '1';
+    }
+  }
+
+  // Extract section data from the rendered DOM (so edits are reflected in diff)
+  function getSectionsFromDOM(sopIndex) {
+    const sections = [];
+    document.querySelectorAll(`.section-card[data-sop="${sopIndex}"]`).forEach(card => {
+      sections.push({
+        name: card.dataset.name,
+        current: card.dataset.cur,
+        rewrite: card.querySelector('.rewrite-body').innerText.trim()
+      });
+    });
+    return sections;
+  }
+
+  // Strip surrounding smart/straight quotes and normalize whitespace for matching
+  function normalizeForMatch(str) {
+    return str
+      .replace(/^[\u201c\u201d\u2018\u2019"']+|[\u201c\u201d\u2018\u2019"']+$/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // Build the diff preview: find current wording in SOP text, mark del + ins
+  function buildSOPPreview(sopContent, sections) {
+    // Work on normalized plain text for matching, then escape for display
+    const normalizedContent = sopContent.replace(/\s+/g, ' ');
+
+    let escaped = escapeHtml(sopContent);
+
+    for (const sec of sections) {
+      if (!sec.current) continue;
+
+      const normalized = normalizeForMatch(sec.current);
+      const rewEscaped = escapeHtml(sec.rewrite);
+
+      // Try full match first
+      let matchStr = normalized;
+      let found = normalizedContent.includes(matchStr);
+
+      // Fallback: try first sentence
+      if (!found) {
+        const firstSentence = normalized.split(/[.!?]/)[0].trim();
+        if (firstSentence.length > 10) {
+          matchStr = firstSentence;
+          found = normalizedContent.includes(matchStr);
+        }
+      }
+
+      if (found) {
+        const curEscaped = escapeHtml(matchStr);
+        if (escaped.includes(curEscaped)) {
+          escaped = escaped.replace(
+            curEscaped,
+            `<del class="diff-del">${curEscaped}</del><ins class="diff-ins">${rewEscaped}</ins>`
+          );
+        }
+      }
+    }
+
+    return `<pre class="sop-pre diff-pre">${escaped}</pre>`;
+  }
+
+  function formatInline(text) {
+    if (!text) return '';
+    text = escapeHtml(text);
+    text = text.replace(/ -- /g, ' - ');                                              // -- to -
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');                    // **bold**
+    text = text.replace(/#([a-z][a-z0-9\-]+)/g,
+      '<span class="slack-ch">#$1</span>');                                           // #slack-channel
+    text = text.replace(/\[([^\]]+)\]/g,
+      '<span class="inline-tag">[$1]</span>');                                        // [tag-label]
+    text = text.replace(/\b(\d+(?:\.\d+)?%)/g, '<strong>$1</strong>');              // percentages
+    return text;
+  }
+
+  function formatText(rawText) {
+    if (!rawText) return '';
+    const lines = rawText.split('\n');
+    let html = '';
+    let inList = false;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        if (!inList) { html += '<ul class="field-list">'; inList = true; }
+        html += `<li>${formatInline(trimmed.slice(2))}</li>`;
+      } else {
+        if (inList) { html += '</ul>'; inList = false; }
+        if (trimmed === '') {
+          html += '<br>';
+        } else {
+          html += formatInline(line) + '<br>';
+        }
+      }
+    }
+    if (inList) html += '</ul>';
+    // clean up trailing/excess breaks
+    html = html.replace(/(<br\s*\/?>){2,}/g, '<br>').replace(/<br\s*\/?>$/, '');
+    return html;
+  }
+
+  function parseAnalysisBlocks(analysisText) {
+    const parts = analysisText.split(/^---$/m).map(s => s.trim()).filter(Boolean);
+    const blocks = [];
+    for (const part of parts) {
+      if (!part.startsWith('SECTION:')) continue;
+      const section = {};
+      const lines = part.split('\n');
+      let currentKey = null;
+      let buffer = [];
+      for (const line of lines) {
+        if (line.startsWith('SECTION:')) {
+          currentKey = 'section'; buffer = [line.replace('SECTION:', '').trim()];
+        } else if (line.startsWith('CURRENT WORDING:')) {
+          if (currentKey) section[currentKey] = buffer.join('\n').trim();
+          currentKey = 'current'; buffer = [line.replace('CURRENT WORDING:', '').trim()];
+        } else if (line.startsWith('WHY OUTDATED:')) {
+          if (currentKey) section[currentKey] = buffer.join('\n').trim();
+          currentKey = 'why'; buffer = [line.replace('WHY OUTDATED:', '').trim()];
+        } else if (line.startsWith('SUGGESTED REWRITE:')) {
+          if (currentKey) section[currentKey] = buffer.join('\n').trim();
+          currentKey = 'rewrite'; buffer = [line.replace('SUGGESTED REWRITE:', '').trim()];
+        } else {
+          buffer.push(line);
+        }
+      }
+      if (currentKey) section[currentKey] = buffer.join('\n').trim();
+      blocks.push(section);
+    }
+    return blocks;
+  }
+
+  function renderAnalysis(analysisText, sopIndex, sopTitle) {
+    const sectionBlocks = parseAnalysisBlocks(analysisText);
+
+    if (sectionBlocks.length === 0) {
+      return `<div class="analysis-block">${escapeHtml(analysisText)}</div>`;
+    }
+
+    let html = '';
+    const count = sectionBlocks.length;
+    html += `<div class="sections-found">We found <strong>${count}</strong> section${count !== 1 ? 's' : ''} that need${count === 1 ? 's' : ''} updating.</div>`;
+
+    html += sectionBlocks.map((s, secIdx) => {
+      // Store raw values in data attributes for diff preview and refine calls
+      const dataAttrs = [
+        `data-sop="${sopIndex}"`,
+        `data-sec="${secIdx}"`,
+        `data-name="${escapeAttr(s.section || '')}"`,
+        `data-cur="${escapeAttr(s.current || '')}"`,
+        `data-why="${escapeAttr(s.why || '')}"`,
+        `data-soptitle="${escapeAttr(sopTitle || '')}"`
+      ].join(' ');
+
+      return `
+      <div class="section-card" ${dataAttrs}>
+        <div class="section-title">${formatInline(s.section || '')}</div>
+        <div class="section-field field-current">
+          <div class="section-field-label">Current wording</div>
+          <div class="section-field-body">${formatText(s.current || '')}</div>
+        </div>
+        <div class="section-field field-why">
+          <div class="section-field-label">Why outdated</div>
+          <div class="section-field-body">${formatText(s.why || '')}</div>
+        </div>
+        <div class="section-field field-rewrite">
+          <div class="section-field-label rewrite-label-row">
+            <span>Suggested rewrite</span>
+            <button class="btn-refine" onclick="openRefine(this)" title="Ask AI to refine this suggestion">✦ Refine</button>
+          </div>
+          <div class="section-field-body rewrite-body" contenteditable="true" spellcheck="false">${s.rewrite || ''}</div>
+          <div class="refine-form" style="display:none;">
+            <textarea class="refine-input" placeholder="Tell AI how to improve this rewrite... (e.g. 'make it shorter', 'keep the numbered list format', 'add a note about exceptions')"></textarea>
+            <div class="refine-actions">
+              <button class="btn-refine-submit" onclick="submitRefine(this)">Generate</button>
+              <button class="btn-refine-cancel" onclick="closeRefine(this)">Cancel</button>
+              <span class="refine-spinner" style="display:none;"><span class="spinner"></span></span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    return html;
+  }
+
+  // Escape for HTML attribute values (double-quote safe)
+  function escapeAttr(str) {
+    if (typeof str !== 'string') return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/\n/g, '&#10;');
+  }
+
+  // Refine form handlers
+  function openRefine(btn) {
+    const fieldRewrite = btn.closest('.field-rewrite');
+    const form = fieldRewrite.querySelector('.refine-form');
+    form.style.display = 'block';
+    form.querySelector('.refine-input').focus();
+    btn.style.display = 'none';
+  }
+
+  function closeRefine(btn) {
+    const fieldRewrite = btn.closest('.field-rewrite');
+    const form = fieldRewrite.querySelector('.refine-form');
+    form.style.display = 'none';
+    form.querySelector('.refine-input').value = '';
+    fieldRewrite.querySelector('.btn-refine').style.display = '';
+  }
+
+  async function submitRefine(btn) {
+    const fieldRewrite = btn.closest('.field-rewrite');
+    const form = fieldRewrite.querySelector('.refine-form');
+    const card = btn.closest('.section-card');
+    const userInstruction = form.querySelector('.refine-input').value.trim();
+
+    if (!userInstruction) {
+      form.querySelector('.refine-input').focus();
+      return;
+    }
+
+    const spinner = form.querySelector('.refine-spinner');
+    btn.disabled = true;
+    spinner.style.display = 'inline-flex';
+
+    try {
+      const response = await fetch('/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          release_note: currentReleaseNote,
+          sop_title: card.dataset.soptitle,
+          section_name: card.dataset.name,
+          current_wording: card.dataset.cur,
+          why_outdated: card.dataset.why,
+          suggested_rewrite: fieldRewrite.querySelector('.rewrite-body').innerText.trim(),
+          user_instruction: userInstruction
+        })
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        alert('Refine error: ' + data.error);
+        return;
+      }
+
+      // Update the editable rewrite body
+      fieldRewrite.querySelector('.rewrite-body').innerText = data.rewrite;
+
+      // Invalidate diff preview so it rebuilds on next open
+      const sopIndex = parseInt(card.dataset.sop);
+      const diffContent = document.getElementById(`full-sop-${sopIndex}`);
+      if (diffContent) delete diffContent.dataset.diffBuilt;
+
+      closeRefine(btn);
+
+    } catch (err) {
+      alert('Connection error: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+    }
+  }
+
+  // Live-link: rebuild diff preview when user edits a rewrite field while preview is open
+  document.getElementById('results-container').addEventListener('input', function(e) {
+    if (!e.target.classList.contains('rewrite-body')) return;
+    const card = e.target.closest('.section-card');
+    if (!card) return;
+    const sopIndex = parseInt(card.dataset.sop);
+    const diffContent = document.getElementById(`full-sop-${sopIndex}`);
+    if (!diffContent || !diffContent.classList.contains('open')) return;
+    const r = analysisResults[sopIndex];
+    diffContent.innerHTML = buildSOPPreview(r.sop_content, getSectionsFromDOM(sopIndex));
+    // keep diffBuilt set so closing/reopening still works
+    diffContent.dataset.diffBuilt = '1';
+  });
+
+  function setLoading(active) {
+    const btn = document.getElementById('btn-analyze');
+    const loading = document.getElementById('loading');
+    btn.disabled = active;
+    loading.style.display = active ? 'flex' : 'none';
+  }
+
+  function clearResults() {
+    document.getElementById('results-container').innerHTML = '';
+    document.getElementById('summary-bar').style.display = 'none';
+    document.getElementById('summary-bar').innerHTML = '';
+  }
+
+  function showError(msg) {
+    const bar = document.getElementById('error-bar');
+    bar.style.display = 'block';
+    bar.textContent = msg;
+  }
+
+  function hideError() {
+    document.getElementById('error-bar').style.display = 'none';
+  }
+
+  function escapeHtml(str) {
+    if (typeof str !== 'string') return str;
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+</script>
+
+</body>
+</html>

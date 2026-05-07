@@ -1,0 +1,13 @@
+RELEASE NOTE -- Stealth Company v3.1
+Date: 2026-05-12
+
+Summary: AI Chat Assistant Launch
+
+Effective May 12, an AI chatbot is live on the website and client portal. The chatbot handles tier-1 support queries autonomously including password resets, billing FAQs, and plan information.
+
+Key operational changes:
+1. Unresolved chat queries are automatically escalated to Zendesk as new tickets tagged [chat-escalation]. Full conversation history is attached to every chat-escalated ticket.
+2. Average inbound ticket volume to the CX team is expected to drop 35%.
+3. SLA clock for chat-escalated tickets starts at the moment the chatbot fails to resolve the query, not when the agent picks it up.
+4. CX agents are now responsible for reviewing chatbot responses on escalated tickets as part of the QA process. A new QA checklist item must be added: "Was the chatbot response accurate before escalation?"
+5. Weekly reporting metrics must be rebaselined. Ticket volume, first response time, and resolution rate will all be affected by the 35% volume drop. Historical comparisons must note the chatbot launch date as a baseline shift.
