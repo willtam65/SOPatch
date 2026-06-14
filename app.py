@@ -11,11 +11,32 @@ from flask import Flask, render_template, request, jsonify
 from core.tagger import run_tagger
 from core.analyzer import analyze_all_sops, refine_section
 from core.confluence import push_to_confluence, get_credentials
+from demo_data import (
+    DEMO_ANALYSIS,
+    DEMO_BANNER_TEXT,
+    DEMO_PUSH_MESSAGE,
+    DEMO_REFINE_MESSAGE,
+)
 
 app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RELEASE_NOTE_PATH = os.path.join(BASE_DIR, 'data', 'release_note.txt')
+
+
+def env_demo_enabled():
+    """Demo Mode forced on for the whole process via SOPATCH_DEMO=1."""
+    return os.environ.get('SOPATCH_DEMO') == '1'
+
+
+def request_demo_enabled(data):
+    """
+    Demo Mode for a single API call. Enabled if the process-wide env flag is
+    set, or the frontend (rendered in demo mode) sent {"demo": true}.
+    Demo Mode is only ever entered explicitly -- a failed live Confluence call
+    never falls back to demo.
+    """
+    return env_demo_enabled() or bool(data.get('demo'))
 
 
 @app.route('/')
@@ -27,7 +48,14 @@ def index():
             release_note_text = f.read()
     except FileNotFoundError:
         pass
-    return render_template('index.html', release_note=release_note_text)
+    demo_mode = env_demo_enabled() or request.args.get('demo') == '1'
+    return render_template(
+        'index.html',
+        release_note=release_note_text,
+        demo_mode=demo_mode,
+        demo_banner_text=DEMO_BANNER_TEXT,
+        demo_refine_message=DEMO_REFINE_MESSAGE,
+    )
 
 
 @app.route('/analyze', methods=['POST'])
@@ -38,6 +66,11 @@ def analyze():
     Return results as JSON.
     """
     data = request.get_json()
+
+    # Demo Mode: return the hardcoded result, no tagger / Claude / Confluence.
+    if request_demo_enabled(data):
+        return jsonify(DEMO_ANALYSIS)
+
     release_note_text = data.get('release_note', '').strip()
 
     if not release_note_text:
@@ -92,6 +125,16 @@ def push():
     Push the change log to the correct Confluence page.
     """
     data = request.get_json()
+
+    # Demo Mode: never touch Confluence; return a success-style demo notice.
+    if request_demo_enabled(data):
+        return jsonify({
+            'success': True,
+            'demo': True,
+            'title': data.get('title', 'SOP'),
+            'message': DEMO_PUSH_MESSAGE,
+        })
+
     page_id = data.get('page_id', '').strip()
     analysis_text = data.get('analysis', '').strip()
     sop_title = data.get('title', 'SOP')
@@ -119,6 +162,12 @@ def refine():
     Return an improved suggested rewrite from Claude.
     """
     data = request.get_json()
+
+    # Demo Mode: Refine needs a live Claude call, so it is disabled here.
+    # The frontend hides the button in demo; this is a backend safety guard.
+    if request_demo_enabled(data):
+        return jsonify({'error': DEMO_REFINE_MESSAGE}), 400
+
     release_note_text = data.get('release_note', '').strip()
     sop_title = data.get('sop_title', '').strip()
     section_name = data.get('section_name', '').strip()

@@ -34,6 +34,28 @@ python3 app.py
 
 Open `http://localhost:5001`
 
+## Demo Mode
+
+Want to try the full workflow without any credentials or setup? Run SOPatch in
+Demo Mode. It uses bundled sample data, makes **zero external API calls**, and
+needs no Anthropic or Confluence keys.
+
+```bash
+SOPATCH_DEMO=1 python3 app.py
+```
+
+Then open `http://localhost:5001`. (You can also leave the env var unset and just
+visit `http://localhost:5001/?demo=1`.)
+
+In Demo Mode you get the complete experience — analyze a fixed sample release
+note, see the flagged SOP sections, view the before/after diff, and reach the
+push step — all from local files in `data/`. The release note is pre-filled and
+read-only, the Refine button is disabled (it needs live AI), and the live
+Confluence push is replaced with a demo notice (nothing is sent to Confluence).
+
+With valid credentials and Demo Mode off, the app runs the real live flow exactly
+as normal.
+
 ## Environment variables
 
 ```

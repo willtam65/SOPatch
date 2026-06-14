@@ -15,8 +15,13 @@
     <div class="header-logo">SOPatch</div>
     <div class="header-tagline">AI-powered SOP update detection for CX and Ops teams</div>
   </div>
-  <div class="header-badge">v0.1 -- Active Development</div>
+  <div class="header-badge">v0.2 -- Active Development</div>
 </div>
+
+{% if demo_mode %}
+<!-- Demo Mode banner -->
+<div class="demo-banner">{{ demo_banner_text }}</div>
+{% endif %}
 
 <!-- Main -->
 <div class="main">
@@ -29,10 +34,15 @@
         id="release-note"
         class="release-note-textarea"
         placeholder="Paste your release note, policy update, or internal change memo here..."
+        {% if demo_mode %}readonly{% endif %}
       >{{ release_note }}</textarea>
+      {% if demo_mode %}
+      <div class="input-hint">Demo uses a fixed sample release note.</div>
+      {% else %}
       <div class="input-hint">
         No specific format required. SOPatch reads the content and automatically identifies which SOPs need updating.
       </div>
+      {% endif %}
 
       <button class="btn-analyze" id="btn-analyze" onclick="runAnalysis()">
         <span>Analyze SOPs</span>
@@ -47,18 +57,20 @@
     </div>
 
     <div class="footer">
-      SOPatch v0.1 &mdash; Built by Will Tam &mdash;
+      SOPatch v0.2 &mdash; Built by Will Tam &mdash;
       <a href="https://github.com/willtam65/sopatch" target="_blank" style="color:#aaa;">GitHub</a>
     </div>
   </div>
 
   <!-- Right Panel: Results -->
   <div class="right-panel">
+    <div class="impact-card" id="impact-card"></div>
     <div class="summary-bar" id="summary-bar"></div>
     <div id="results-container">
       <div class="empty-state">
         <div class="empty-state-icon">⟳</div>
-        <div class="empty-state-text">Paste a release note and click <strong>Analyze SOPs</strong> to get started.</div>
+        <div class="empty-state-title">No analysis yet</div>
+        <div class="empty-state-text">Paste a release note and click <strong>Analyze SOPs</strong>. SOPatch flags the affected sections and suggests rewrites.</div>
       </div>
     </div>
   </div>
@@ -66,6 +78,10 @@
 </div>
 
 <script>
+  // Demo Mode flag, injected by the server. When true, all API calls carry
+  // {demo:true} so the backend uses bundled sample data and makes no network calls.
+  const DEMO_MODE = {{ 'true' if demo_mode else 'false' }};
+
   // Store analysis results globally so push buttons can access them by index
   let analysisResults = [];
   let currentReleaseNote = '';
@@ -86,7 +102,7 @@
       const response = await fetch('/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ release_note: releaseNote })
+        body: JSON.stringify({ release_note: releaseNote, demo: DEMO_MODE })
       });
 
       const data = await response.json();
@@ -107,9 +123,62 @@
     }
   }
 
+  // Minutes saved per flagged section (manual cross-check + rewrite time).
+  const MINUTES_PER_SECTION = 15;
+
+  // Format a minute count as "~45 min" or "~1h 15m".
+  function formatTimeSaved(totalMinutes) {
+    if (totalMinutes < 60) return `~${totalMinutes} min`;
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    return mins === 0 ? `~${hours}h` : `~${hours}h ${mins}m`;
+  }
+
+  // Render the Impact Summary Card above the flagged-SOPs bar.
+  // Computes entirely from the /analyze payload -- no backend call.
+  function renderImpactCard(data) {
+    const card = document.getElementById('impact-card');
+
+    if (!data.affected_count) {
+      card.style.display = 'none';
+      card.innerHTML = '';
+      return;
+    }
+
+    const sectionsFlagged = (data.results || []).reduce(
+      (sum, r) => sum + parseAnalysisBlocks(r.analysis || '').length, 0
+    );
+    const timeSaved = formatTimeSaved(sectionsFlagged * MINUTES_PER_SECTION);
+
+    const metrics = [
+      { value: data.affected_count, label: 'SOPs affected' },
+      { value: sectionsFlagged, label: 'Sections flagged' },
+      { value: timeSaved, label: 'Est. review time saved' }
+    ];
+
+    card.style.display = 'block';
+    card.innerHTML = `
+      <div class="impact-eyebrow">This release</div>
+      <div class="impact-metrics">
+        ${metrics.map(m => `
+          <div class="impact-metric">
+            <div class="impact-value">${escapeHtml(String(m.value))}</div>
+            <div class="impact-label">${escapeHtml(m.label)}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="impact-context">
+        Based on ~${MINUTES_PER_SECTION} min of manual cross-checking and rewriting per flagged section.
+      </div>
+    `;
+  }
+
   function renderResults(data) {
     const summaryBar = document.getElementById('summary-bar');
     const container = document.getElementById('results-container');
+
+    // Impact summary card (only when there are flagged SOPs)
+    renderImpactCard(data);
 
     // Summary bar with select-all + bulk push
     summaryBar.style.display = 'block';
@@ -270,7 +339,8 @@
         body: JSON.stringify({
           page_id: r.page_id,
           analysis: editedAnalysis,
-          title: r.title
+          title: r.title,
+          demo: DEMO_MODE
         })
       });
 
@@ -284,6 +354,14 @@
       }
 
       btn.classList.add('success');
+
+      // Demo Mode: reuse the success UI, but with a demo notice instead of a Confluence link.
+      if (data.demo) {
+        btn.querySelector('span').textContent = 'Demo — push simulated';
+        resultDiv.innerHTML = `<div class="demo-push-notice">${escapeHtml(data.message)}</div>`;
+        return;
+      }
+
       btn.querySelector('span').textContent = 'Pushed to Confluence';
       resultDiv.innerHTML = `
         <a class="confluence-link" href="${escapeHtml(data.url)}" target="_blank">
@@ -481,7 +559,10 @@
         <div class="section-field field-rewrite">
           <div class="section-field-label rewrite-label-row">
             <span>Suggested rewrite</span>
-            <button class="btn-refine" onclick="openRefine(this)" title="Ask AI to refine this suggestion">✦ Refine</button>
+            ${DEMO_MODE
+              ? `<span class="refine-disabled" title="Refine uses live AI — disabled in demo.">Refine uses live AI — disabled in demo.</span>`
+              : `<button class="btn-refine" onclick="openRefine(this)" title="Ask AI to refine this suggestion">✦ Refine</button>`
+            }
           </div>
           <div class="section-field-body rewrite-body" contenteditable="true" spellcheck="false">${s.rewrite || ''}</div>
           <div class="refine-form" style="display:none;">
@@ -604,6 +685,8 @@
     document.getElementById('results-container').innerHTML = '';
     document.getElementById('summary-bar').style.display = 'none';
     document.getElementById('summary-bar').innerHTML = '';
+    document.getElementById('impact-card').style.display = 'none';
+    document.getElementById('impact-card').innerHTML = '';
   }
 
   function showError(msg) {
