@@ -1,3 +1,4 @@
+<img width="1470" height="833" alt="Screenshot 2026-06-14 at 2 48 50 PM" src="https://github.com/user-attachments/assets/9e6ddb37-87d8-4446-8b6e-2d9ef4bcbd03" />
 # SOPatch
 
 AI-powered SOP update detection. Paste a release note, get flagged sections and suggested rewrites, push directly to Confluence.
