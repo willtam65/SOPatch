@@ -18,6 +18,7 @@ import json
 import anthropic
 from dotenv import load_dotenv
 from core.confluence import get_sop_pages, set_page_labels, get_credentials
+from core.config import MODEL
 
 load_dotenv()
 
@@ -47,7 +48,7 @@ SOP CONTENT:
 {sop_content}"""
 
     message = client.messages.create(
-        model='claude-opus-4-6',
+        model=MODEL,
         max_tokens=256,
         messages=[{'role': 'user', 'content': prompt}]
     )

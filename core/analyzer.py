@@ -9,6 +9,7 @@ Returns flagged sections and suggested rewrites for each SOP.
 import os
 import anthropic
 from dotenv import load_dotenv
+from core.config import MODEL
 
 load_dotenv()
 
@@ -62,7 +63,7 @@ def analyze_sop(client, release_note_text, sop):
     prompt = build_prompt(release_note_text, sop['content'], sop['title'])
 
     message = client.messages.create(
-        model='claude-opus-4-6',
+        model=MODEL,
         max_tokens=4096,
         messages=[
             {'role': 'user', 'content': prompt}
@@ -124,7 +125,7 @@ Keep the same style and format as the original SOP section.
 Output ONLY the new rewrite text -- no labels, no explanation, no preamble."""
 
     message = client.messages.create(
-        model='claude-opus-4-6',
+        model=MODEL,
         max_tokens=1024,
         messages=[{'role': 'user', 'content': prompt}]
     )

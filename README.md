@@ -18,7 +18,7 @@ When a product release or policy change drops, SOPatch:
 ## Stack
 
 - Python / Flask
-- Claude API (claude-opus-4-6)
+- Claude API (claude-opus-4-8)
 - Confluence REST API
 - Vanilla JS frontend
 
