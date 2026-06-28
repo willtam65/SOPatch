@@ -8,9 +8,10 @@ Returns flagged sections and suggested rewrites for each SOP.
 
 from dotenv import load_dotenv
 from core.config import MODEL
-from core.grounding import ground_analysis
+from core.grounding import ground_sections
 from core.llm import get_client, complete
 from core.logging import get_logger
+from core.schema import AnalysisResult, ANALYSIS_TOOL, sections_to_text
 
 load_dotenv()
 
@@ -18,36 +19,20 @@ log = get_logger("sopatch.analyzer")
 
 
 def build_prompt(release_note_text, sop_content, sop_title):
+    """Build the Claude prompt for a single SOP analysis.
+
+    Structure is enforced by the report_flagged_sections tool, so the prompt
+    only has to describe the task and the quoting rule that grounding relies on.
     """
-    Build the Claude prompt for a single SOP analysis.
-    Intentionally structured -- core logic abstracted for GitHub publication.
-    """
-    return f"""You are a CX Operations specialist reviewing internal SOPs for accuracy after a product release.
+    return f"""You are a CX Operations specialist reviewing an internal SOP for accuracy after a product release.
 
-You will be given:
-1. A release note describing what changed in the product
-2. An existing SOP document
+You are given a release note describing what changed, and an existing SOP. Identify every section or step in the SOP that is now outdated, incomplete, or incorrect because of the release note, and report them by calling the report_flagged_sections tool.
 
-Your job is to:
-- Identify every section or step in the SOP that is now outdated, incomplete, or incorrect based on the release note
-- For each affected section, explain exactly why it needs updating
-- Provide a specific suggested rewrite for each affected section
-
-Important rules:
-- Only flag sections that are genuinely affected by the release note
-- Do not suggest changes to sections that are still accurate
-- Be specific -- quote the exact outdated wording
-- Keep suggested rewrites in the same style and format as the original SOP
-- Do NOT include any introduction, summary, or closing sentence -- output only the structured blocks below
-
-Format your response exactly like this for each affected section, with no text before the first --- or after the last ---:
-
----
-SECTION: [section name or step number]
-CURRENT WORDING: [quote the exact current text]
-WHY OUTDATED: [one or two sentences explaining the issue]
-SUGGESTED REWRITE: [the new wording to replace it]
----
+Rules:
+- Only flag sections genuinely affected by the release note. Do not flag sections that are still accurate.
+- Quote the current wording VERBATIM from the SOP (copy the exact text) so it can be located in the document.
+- Keep each suggested rewrite in the same style and format as the original SOP.
+- If nothing is affected, call the tool with an empty sections list.
 
 RELEASE NOTE:
 {release_note_text}
@@ -56,6 +41,14 @@ SOP TITLE: {sop_title}
 
 SOP CONTENT:
 {sop_content}"""
+
+
+def _extract_tool_input(message, tool_name):
+    """Pull the forced tool call's validated input out of the response."""
+    for block in message.content:
+        if getattr(block, 'type', None) == 'tool_use' and block.name == tool_name:
+            return block.input
+    return {'sections': []}
 
 
 def analyze_sop(client, release_note_text, sop):
@@ -69,14 +62,21 @@ def analyze_sop(client, release_note_text, sop):
         client,
         model=MODEL,
         max_tokens=4096,
+        tools=[ANALYSIS_TOOL],
+        tool_choice={'type': 'tool', 'name': ANALYSIS_TOOL['name']},
         messages=[
             {'role': 'user', 'content': prompt}
         ]
     )
 
+    # Structured output: the model is forced to call the tool, so we read and
+    # validate its input instead of regex-parsing free text.
+    result = AnalysisResult(**_extract_tool_input(message, ANALYSIS_TOOL['name']))
+
     # Grounding guard: drop any flagged section whose quoted current wording
-    # can't be found in the source SOP (a hallucinated edit).
-    analysis, dropped = ground_analysis(message.content[0].text, sop['content'])
+    # can't be found in the source SOP (a hallucinated edit). Then serialize the
+    # survivors into the block format the frontend and push step expect.
+    kept, dropped = ground_sections(result.sections, sop['content'])
     if dropped:
         log.info("analyzer.dropped_ungrounded", sop=sop['title'], count=len(dropped))
 
@@ -84,7 +84,7 @@ def analyze_sop(client, release_note_text, sop):
         'filename': sop['filename'],
         'title': sop['title'],
         'matching_tags': sop['matching_tags'],
-        'analysis': analysis
+        'analysis': sections_to_text(kept)
     }
 
 

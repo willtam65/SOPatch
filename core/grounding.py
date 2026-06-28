@@ -72,3 +72,18 @@ def ground_analysis(analysis_text, sop_content):
         else:
             dropped.append(block)
     return _blocks_to_text(kept), dropped
+
+
+def ground_sections(sections, sop_content):
+    """Grounding guard for typed FlaggedSections (the structured-output path).
+
+    Returns (kept, dropped) lists, dropping any section whose current_wording
+    can't be found in the source SOP.
+    """
+    kept, dropped = [], []
+    for section in sections:
+        if is_grounded(section.current_wording, sop_content):
+            kept.append(section)
+        else:
+            dropped.append(section)
+    return kept, dropped
