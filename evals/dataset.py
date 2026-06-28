@@ -17,7 +17,23 @@ retrieval, not the model" is the lesson it teaches.
 
 from __future__ import annotations
 
+import os
+
 from core.matching import matched_labels
+
+_SOPS_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "sops"
+)
+
+
+def _read_sop(filename):
+    """Read an SOP markdown file, returning '' if it's missing."""
+    try:
+        with open(os.path.join(_SOPS_DIR, filename), encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return ""
+
 
 # Four SOPs and their labels (as setup_tags.py would generate them in Confluence).
 SOP_FIXTURES = {
@@ -58,6 +74,16 @@ SOP_FIXTURES = {
         ],
     },
 }
+
+# The content gate needs each SOP's body; load it from the same sample files the
+# app and demo use, keyed by fixture id.
+for _sid, _fname in {
+    "qa": "qa_sop.md",
+    "reporting": "reporting_sop.md",
+    "sla": "sla_sop.md",
+    "triage": "triage_sop.md",
+}.items():
+    SOP_FIXTURES[_sid]["content"] = _read_sop(_fname)
 
 
 # Each case: a release note and the set of SOP ids that should be flagged.

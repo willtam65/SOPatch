@@ -3,7 +3,7 @@
 
 AI-powered SOP update detection. Paste a release note, get flagged sections and suggested rewrites, push directly to Confluence.
 
-[![CI](https://github.com/willtam65/SOPatch/actions/workflows/ci.yml/badge.svg)](https://github.com/willtam65/SOPatch/actions/workflows/ci.yml) ![version](https://img.shields.io/badge/version-0.2-blue) ![Python](https://img.shields.io/badge/python-3.12-green) ![evals](https://img.shields.io/badge/tagger%20eval-P%201.00%20%C2%B7%20R%200.95-success)
+[![CI](https://github.com/willtam65/SOPatch/actions/workflows/ci.yml/badge.svg)](https://github.com/willtam65/SOPatch/actions/workflows/ci.yml) ![version](https://img.shields.io/badge/version-0.2-blue) ![Python](https://img.shields.io/badge/python-3.12-green) ![evals](https://img.shields.io/badge/tagger%20eval-20%20cases-informational)
 
 ## What it does
 
@@ -49,13 +49,27 @@ variable is the matcher:
 | Exact string | 1.00 | 0.81 | 0.90 | 12/14 |
 | Token-aware | 1.00 | 1.00 | 1.00 | 14/14 |
 
-End to end on the full set (now 20 labelled cases, run live) it scores
-**precision 1.00, recall 0.95**. The remaining miss is a multi-SOP case where
-the model's tag extraction, which varies from run to run, didn't emit a label
-that overlapped the doc. Closing that gap means matching on the document's
-content directly (embeddings and reranking) rather than relying on the model to
-emit a matching label string, which is the planned next step. Scoring is pure
-and unit-tested (`pytest`), so CI runs it without secrets.
+End to end on the full set (now 20 labelled cases, run live) it scores around
+**precision 0.95, recall 0.95**, give or take a little run to run since tag
+extraction is non-deterministic. The misses are SOPs the release note really
+affected, but whose labels the model's extracted tags didn't happen to overlap.
+
+The fix for that is matching on document content, not label strings. At a few
+dozen SOPs a vector index is overkill, so instead there's an optional **content
+gate** (`SOPATCH_CONTENT_GATE=1`, or `run_eval --gate`): a second pass that asks
+the model which of the label-missed SOPs are actually affected, reading their
+content. Measured, it's a deliberate tradeoff, not a free win:
+
+| Matching | Precision | Recall | F1 |
+| --- | --- | --- | --- |
+| Label match (default) | ~0.95 | ~0.95 | ~0.95 |
+| Label match + content gate | ~0.88 | ~1.00 | ~0.93 |
+
+The gate catches every stale SOP (recall ~1.00) but over-flags a few tangential
+ones, lowering precision and adding a call per analysis. That F1 cost isn't
+worth it for most runs, so it's left off by default and turned on when recall
+matters more than a reviewer dismissing the occasional false alarm. Scoring is
+pure and unit-tested (`pytest`), so CI runs it without secrets.
 
 ## Setup
 

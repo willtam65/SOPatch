@@ -10,14 +10,18 @@ No local files or external registries -- Confluence is the single source of trut
 Matching flow:
   1. Fetch all SOP pages from Confluence (with their labels)
   2. Claude reads the release note and extracts relevant tags
-  3. Tag intersection against each SOP's labels
-  4. Only matched SOPs go to the full analyzer
+  3. Token-aware match of those tags against each SOP's labels (cheap, no extra call)
+  4. Content gate (opt-in, SOPATCH_CONTENT_GATE=1): re-check the SOPs the labels
+     missed against their actual content with one call, to lift recall at a
+     measured precision cost
+  5. Only matched SOPs go to the full analyzer
 
 Fallback (no labels set):
-  If SOPs have no labels yet, falls back to full AI scan.
+  If SOPs have no labels yet, the content gate scans every SOP instead.
   Run setup_tags.py to generate and write labels to Confluence.
 """
 
+import os
 import re
 import json
 from dotenv import load_dotenv
@@ -87,53 +91,75 @@ RELEASE NOTE:
 
 def match_with_labels(release_note_text, sops):
     """
-    Extract tags from the release note, match against Confluence labels.
-    Only SOPs with overlapping labels are flagged as affected.
+    Extract tags from the release note and match them against each SOP's labels,
+    then use the content gate as a recall booster on whatever the labels missed.
     """
     client = get_client()
 
     note_tags = set(extract_tags_from_release_note(client, release_note_text))
     log.info("tagger.tags_extracted", tags=sorted(note_tags))
 
-    affected = []
-    unaffected = []
-
+    affected, unmatched = [], []
     for sop in sops:
         overlap = matched_labels(note_tags, sop['labels'])
         if overlap:
-            affected.append({
-                'page_id': sop['page_id'],
-                'filename': sop['filename'],
-                'title': sop['title'],
-                'content': sop['content'],
-                'matching_tags': sorted(overlap)
-            })
+            affected.append(_affected_entry(sop, sorted(overlap)))
         else:
-            unaffected.append(sop['title'])
+            unmatched.append(sop)
 
+    # Recall booster: label matching only fires when the model emits a tag that
+    # overlaps a label string, which it doesn't always do. Re-check the SOPs the
+    # labels missed against their actual content with one cheap call.
+    if content_gate_enabled() and unmatched:
+        recovered = content_gate(client, release_note_text, unmatched)
+        if recovered:
+            log.info("tagger.content_gate_recovered", count=len(recovered))
+        still_unmatched = []
+        for sop in unmatched:
+            if sop['page_id'] in recovered:
+                affected.append(_affected_entry(sop, ['content-match']))
+            else:
+                still_unmatched.append(sop)
+        unmatched = still_unmatched
+
+    unaffected = [sop['title'] for sop in unmatched]
     return affected, unaffected
 
 
-# ── Mode 2: Full AI scan (fallback when no labels exist) ─────────────────────
+# ── Content gate: does this release note affect these SOPs, by content? ───────
 
-def match_sops_with_ai(release_note_text, sops):
-    """
-    Fallback: send release note + all SOP content to Claude.
-    Used when SOPs have no labels set yet (before setup_tags.py is run).
-    """
-    client = get_client()
+def content_gate_enabled():
+    """The content-gate recall booster is opt-in (off by default).
 
-    sop_list = '\n\n'.join([
+    Measured tradeoff: it takes recall to ~1.00 but drops precision (it
+    over-flags tangential SOPs) and adds a call per analysis, so it's left off
+    by default and turned on with SOPATCH_CONTENT_GATE=1 for recall-critical use.
+    """
+    return os.environ.get('SOPATCH_CONTENT_GATE', '0') == '1'
+
+
+def content_gate(client, release_note_text, sops):
+    """Ask Claude which of these SOPs are affected, reading their actual content.
+
+    This is the content-aware stage: it catches SOPs label matching misses
+    because the model's extracted tags didn't happen to overlap a label string.
+    Returns the set of affected page_ids. Used both as the recall booster in
+    match_with_labels and as the full fallback scan when no labels exist.
+
+    At a few dozen SOPs this is cheaper and more accurate than embeddings; a
+    vector index would only earn its keep at thousands of documents.
+    """
+    sop_list = '\n\n'.join(
         f"Page ID: {sop['page_id']}\nTitle: {sop['title']}\n\n{sop['content']}"
         for sop in sops
-    ])
+    )
 
-    prompt = f"""You are reviewing internal SOPs to determine which ones need updating based on a product release note.
+    prompt = f"""You are checking whether a product release note REQUIRES an edit to each internal SOP below.
 
-An SOP is affected if any of its steps, processes, or policies would need to change based on what is described in the release note.
+Mark an SOP as affected ONLY if the release note clearly and specifically requires changing that SOP's own steps, policies, or wording. If the SOP is merely related, adjacent, or only tangentially connected to the change, mark it UNAFFECTED. When in doubt, mark it unaffected -- a false alarm wastes a reviewer's time.
 
 Respond with ONLY a valid JSON object in this exact format, no explanation:
-{{"affected": ["page_id_1", "page_id_2"], "unaffected": ["page_id_3"]}}
+{{"affected": ["page_id_1"], "unaffected": ["page_id_2", "page_id_3"]}}
 
 Use the Page ID values exactly as given.
 
@@ -159,16 +185,38 @@ SOPs TO REVIEW:
             response_text = match.group(1).strip()
 
     result = json.loads(response_text)
-    affected_ids = set(result.get('affected', []))
+    return set(result.get('affected', []))
+
+
+# ── Mode 2: Full content scan (fallback when no labels exist) ────────────────
+
+def match_sops_with_ai(release_note_text, sops):
+    """
+    Fallback for when no SOP has labels yet (before setup_tags.py is run):
+    run the content gate over every SOP.
+    """
+    client = get_client()
+    affected_ids = content_gate(client, release_note_text, sops)
 
     affected, unaffected = [], []
     for sop in sops:
         if sop['page_id'] in affected_ids:
-            affected.append({**sop, 'matching_tags': []})
+            affected.append(_affected_entry(sop, []))
         else:
             unaffected.append(sop['title'])
 
     return affected, unaffected
+
+
+def _affected_entry(sop, matching_tags):
+    """Build the affected-SOP dict the analyzer consumes."""
+    return {
+        'page_id': sop['page_id'],
+        'filename': sop['filename'],
+        'title': sop['title'],
+        'content': sop['content'],
+        'matching_tags': matching_tags,
+    }
 
 
 # ── Main entry point ─────────────────────────────────────────────────────────

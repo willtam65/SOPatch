@@ -25,7 +25,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from evals.dataset import CASES, SOP_FIXTURES, predict_affected, validate
+from evals.dataset import CASES, SOP_FIXTURES, all_sop_ids, predict_affected, validate
 from evals.scoring import aggregate, score_case
 
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
@@ -35,10 +35,13 @@ def _fmt_set(ids):
     return ",".join(sorted(ids)) if ids else "-"
 
 
-def run_live(cases):
-    """Extract tags per case with Claude, match, and score. Returns per-case rows."""
+def run_live(cases, gate=False):
+    """Extract tags per case with Claude, match, and score. Returns per-case rows.
+
+    With gate=True, the content gate re-checks the SOPs label matching missed
+    against their content -- the hybrid the live tagger runs by default."""
     import anthropic  # imported lazily so --dry-run and unit tests need no SDK
-    from core.tagger import extract_tags_from_release_note
+    from core.tagger import extract_tags_from_release_note, content_gate
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -52,6 +55,15 @@ def run_live(cases):
     for case in cases:
         tags = set(extract_tags_from_release_note(client, case["note"]))
         predicted = predict_affected(tags)
+        if gate:
+            missed = sorted(all_sop_ids() - predicted)
+            if missed:
+                gate_sops = [
+                    {"page_id": sid, "title": SOP_FIXTURES[sid]["title"],
+                     "content": SOP_FIXTURES[sid].get("content", "")}
+                    for sid in missed
+                ]
+                predicted = predicted | content_gate(client, case["note"], gate_sops)
         result = score_case(predicted, case["gold"])
         rows.append(
             {
@@ -120,7 +132,7 @@ def print_table(rows, summary):
     )
 
 
-def save_results(rows, summary, model):
+def save_results(rows, summary, model, filename="latest.json"):
     RESULTS_DIR.mkdir(exist_ok=True)
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -128,7 +140,7 @@ def save_results(rows, summary, model):
         "summary": summary,
         "cases": rows,
     }
-    out = RESULTS_DIR / "latest.json"
+    out = RESULTS_DIR / filename
     out.write_text(json.dumps(payload, indent=2) + "\n")
     print(f"\nFull traces written to {out.relative_to(Path.cwd())}")
 
@@ -149,6 +161,10 @@ def main(argv=None):
         "--replay",
         action="store_true",
         help="re-score the saved model outputs with the current matcher (no API calls)",
+    )
+    parser.add_argument(
+        "--gate", action="store_true",
+        help="add the content gate on top of label matching (the live hybrid)",
     )
     parser.add_argument(
         "--limit", type=int, default=None, help="only run the first N cases"
@@ -175,10 +191,10 @@ def main(argv=None):
 
     from core.config import MODEL
 
-    rows = run_live(cases)
+    rows = run_live(cases, gate=args.gate)
     summary = aggregate(rows)
     print_table(rows, summary)
-    save_results(rows, summary, MODEL)
+    save_results(rows, summary, MODEL, "latest-gated.json" if args.gate else "latest.json")
     return 0
 
 
