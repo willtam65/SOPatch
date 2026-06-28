@@ -7,6 +7,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=DM+Mono&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.3.0/dist/tabler-icons.min.css"/>
   <link rel="stylesheet" href="/static/style.css"/>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sopatch-theme');
+        if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
 
@@ -24,6 +33,7 @@
       <a href="https://github.com/willtam65/SOPatch/tree/main/evals" target="_blank" rel="noopener">Evals</a>
       <a href="https://github.com/willtam65/SOPatch" target="_blank" rel="noopener">GitHub</a>
     </nav>
+    <button class="icon-btn" id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><i class="ti ti-moon" aria-hidden="true"></i></button>
     <span class="avatar">WT</span>
   </div>
 </div>
@@ -95,6 +105,19 @@
   // Store analysis results globally so push buttons can access them by index
   let analysisResults = [];
   let currentReleaseNote = '';
+
+  // ── Theme toggle (overrides the system preference, remembered in localStorage) ──
+  function syncThemeIcon() {
+    const icon = document.querySelector('#theme-toggle i');
+    if (icon) icon.className = document.documentElement.dataset.theme === 'dark' ? 'ti ti-sun' : 'ti ti-moon';
+  }
+  function toggleTheme() {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('sopatch-theme', next); } catch (e) {}
+    syncThemeIcon();
+  }
+  syncThemeIcon();
 
   async function runAnalysis() {
     const releaseNote = document.getElementById('release-note').value.trim();
