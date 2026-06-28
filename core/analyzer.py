@@ -10,6 +10,7 @@ import os
 import anthropic
 from dotenv import load_dotenv
 from core.config import MODEL
+from core.grounding import ground_analysis
 
 load_dotenv()
 
@@ -70,11 +71,17 @@ def analyze_sop(client, release_note_text, sop):
         ]
     )
 
+    # Grounding guard: drop any flagged section whose quoted current wording
+    # can't be found in the source SOP (a hallucinated edit).
+    analysis, dropped = ground_analysis(message.content[0].text, sop['content'])
+    if dropped:
+        print(f"  [SOPatch] Dropped {len(dropped)} ungrounded section(s) from {sop['title']}")
+
     return {
         'filename': sop['filename'],
         'title': sop['title'],
         'matching_tags': sop['matching_tags'],
-        'analysis': message.content[0].text
+        'analysis': analysis
     }
 
 

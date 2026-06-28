@@ -12,7 +12,9 @@ When a product release or policy change drops, SOPatch:
 1. Reads all your SOPs live from Confluence
 2. Uses Claude AI to identify which SOPs are affected
 3. Flags the specific outdated sections with explanations
-4. Suggests rewrites for each flagged section
+4. Suggests rewrites for each flagged section — and drops any edit whose quoted
+   "current wording" can't be found in the source SOP (a grounding guard against
+   hallucinated edits)
 5. Pushes approved updates back to Confluence with version tracking
 
 ## Stack
