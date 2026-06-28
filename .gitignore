@@ -5,3 +5,5 @@ __pycache__/
 .DS_Store
 output/
 *.log
+.pytest_cache/
+.claude/

@@ -1,0 +1,367 @@
+{
+  "generated_at": "2026-06-28T02:15:19.947123+00:00",
+  "model": "claude-opus-4-8",
+  "summary": {
+    "cases": 14,
+    "tp": 13,
+    "fp": 0,
+    "fn": 3,
+    "precision": 1.0,
+    "recall": 0.8125,
+    "f1": 0.896551724137931,
+    "exact_match": 12,
+    "exact_match_rate": 0.8571428571428571
+  },
+  "cases": [
+    {
+      "id": "chatbot_launch",
+      "summary": "AI chatbot launch (the canonical SOPatch demo note)",
+      "hard": false,
+      "extracted_tags": [
+        "agent-qa-scoring",
+        "chat-escalation-handling",
+        "escalation-ticket-tagging",
+        "qa-checklist-review",
+        "sla-clock-start-rules",
+        "ticket-volume-baseline",
+        "tier-1-query-handling",
+        "weekly-reporting-rebaseline"
+      ],
+      "predicted": [
+        "qa"
+      ],
+      "gold": [
+        "qa",
+        "reporting",
+        "sla"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 2,
+      "exact_match": false,
+      "false_positives": [],
+      "false_negatives": [
+        "reporting",
+        "sla"
+      ]
+    },
+    {
+      "id": "sla_clock_change",
+      "summary": "SLA clock start rule changes",
+      "hard": false,
+      "extracted_tags": [
+        "first-response-time-tracking",
+        "response-time-compliance",
+        "sla-breach-review",
+        "sla-calculation-methodology",
+        "sla-clock-configuration",
+        "ticket-sla-measurement"
+      ],
+      "predicted": [
+        "sla"
+      ],
+      "gold": [
+        "sla"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "exact_match": true,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    {
+      "id": "triage_routing",
+      "summary": "Inbound routing / priority matrix update",
+      "hard": false,
+      "extracted_tags": [
+        "auto-routing-rules",
+        "inbound-ticket-routing",
+        "p1-escalation",
+        "priority-assignment",
+        "queue-management",
+        "senior-agent-routing",
+        "ticket-intake"
+      ],
+      "predicted": [
+        "triage"
+      ],
+      "gold": [
+        "triage"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "exact_match": true,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    {
+      "id": "qa_scorecard_update",
+      "summary": "New QA scorecard item",
+      "hard": false,
+      "extracted_tags": [
+        "agent-qa-scoring",
+        "empathy-scoring",
+        "qa-reviewer-calibration",
+        "qa-scorecard-update",
+        "response-quality-review",
+        "scorecard-item-rubric"
+      ],
+      "predicted": [
+        "qa"
+      ],
+      "gold": [
+        "qa"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "exact_match": true,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    {
+      "id": "reporting_cadence",
+      "summary": "Weekly report adds a metric / trend rule",
+      "hard": false,
+      "extracted_tags": [
+        "metric-flagging",
+        "nps-tracking",
+        "report-assembly",
+        "trend-analysis",
+        "weekly-cx-report",
+        "weekly-reporting"
+      ],
+      "predicted": [
+        "reporting"
+      ],
+      "gold": [
+        "reporting"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "exact_match": true,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    {
+      "id": "unrelated_office_move",
+      "summary": "Office relocation (should flag nothing)",
+      "hard": false,
+      "extracted_tags": [
+        "badge-access-reissuance",
+        "desk-assignment",
+        "facilities-access-management",
+        "office-relocation"
+      ],
+      "predicted": [],
+      "gold": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "exact_match": true,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    {
+      "id": "unrelated_hr_policy",
+      "summary": "HR parental-leave policy (should flag nothing)",
+      "hard": false,
+      "extracted_tags": [
+        "leave-approval-workflow",
+        "leave-eligibility-verification",
+        "leave-policy-administration",
+        "parental-leave-request",
+        "payroll-leave-processing",
+        "people-ops-handbook-update"
+      ],
+      "predicted": [],
+      "gold": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "exact_match": true,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    {
+      "id": "billing_migration",
+      "summary": "Billing provider migration (should flag nothing)",
+      "hard": false,
+      "extracted_tags": [
+        "balance-reconciliation",
+        "billing-provider-migration",
+        "financial-reconciliation",
+        "invoice-generation",
+        "invoice-numbering",
+        "payment-cutover"
+      ],
+      "predicted": [],
+      "gold": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "exact_match": true,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    {
+      "id": "p0_severity_tier",
+      "summary": "New P0 tier affecting both SLA and triage",
+      "hard": false,
+      "extracted_tags": [
+        "p0-severity-tagging",
+        "response-time-tracking",
+        "severity-tier-classification",
+        "sla-breach-review",
+        "sla-target-monitoring",
+        "ticket-triage"
+      ],
+      "predicted": [
+        "sla",
+        "triage"
+      ],
+      "gold": [
+        "sla",
+        "triage"
+      ],
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "exact_match": true,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    {
+      "id": "qa_into_reporting",
+      "summary": "QA scores feed the weekly report",
+      "hard": false,
+      "extracted_tags": [
+        "agent-qa-scoring",
+        "qa-scorecard-process",
+        "quality-metrics-reporting",
+        "weekly-cx-reporting",
+        "weekly-report-assembly"
+      ],
+      "predicted": [
+        "qa"
+      ],
+      "gold": [
+        "qa",
+        "reporting"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 1,
+      "exact_match": false,
+      "false_positives": [],
+      "false_negatives": [
+        "reporting"
+      ]
+    },
+    {
+      "id": "sla_into_reporting",
+      "summary": "SLA breach stats added to weekly report",
+      "hard": false,
+      "extracted_tags": [
+        "cx-report-generation",
+        "sla-breach-counting",
+        "sla-breach-review",
+        "weekly-report-template-update",
+        "weekly-reporting"
+      ],
+      "predicted": [
+        "reporting",
+        "sla"
+      ],
+      "gold": [
+        "reporting",
+        "sla"
+      ],
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "exact_match": true,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    {
+      "id": "triage_tool_migration",
+      "summary": "Inbound queue moves to a new tool",
+      "hard": false,
+      "extracted_tags": [
+        "helpdesk-migration",
+        "inbound-queue-routing",
+        "inbound-ticket-triage",
+        "queue-assignment",
+        "queue-management",
+        "ticket-routing-rules"
+      ],
+      "predicted": [
+        "triage"
+      ],
+      "gold": [
+        "triage"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "exact_match": true,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    {
+      "id": "renamed_qa_audit",
+      "summary": "QA described as 'conversation audit' (synonym -> likely missed)",
+      "hard": true,
+      "extracted_tags": [
+        "agent-qa-scoring",
+        "answer-accuracy-review",
+        "answer-completeness-check",
+        "post-resolution-accuracy-audit",
+        "qa-sampling",
+        "resolved-conversation-review",
+        "senior-reviewer-audit"
+      ],
+      "predicted": [
+        "qa"
+      ],
+      "gold": [
+        "qa"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "exact_match": true,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    {
+      "id": "rebaseline_euphemism",
+      "summary": "Reporting rebaseline described obliquely (likely missed)",
+      "hard": true,
+      "extracted_tags": [
+        "benchmark-comparison",
+        "channel-mix-analysis",
+        "dashboard-annotation",
+        "metric-trend-analysis",
+        "period-over-period-reporting",
+        "weekly-reporting"
+      ],
+      "predicted": [
+        "reporting"
+      ],
+      "gold": [
+        "reporting"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "exact_match": true,
+      "false_positives": [],
+      "false_negatives": []
+    }
+  ]
+}
