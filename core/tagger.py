@@ -18,16 +18,18 @@ Fallback (no labels set):
   Run setup_tags.py to generate and write labels to Confluence.
 """
 
-import os
 import re
 import json
-import anthropic
 from dotenv import load_dotenv
 from core.confluence import get_sop_pages, get_credentials
 from core.config import MODEL
 from core.matching import matched_labels
+from core.llm import get_client, complete
+from core.logging import get_logger
 
 load_dotenv()
+
+log = get_logger("sopatch.tagger")
 
 
 def load_sops_from_confluence():
@@ -65,7 +67,8 @@ Rules:
 RELEASE NOTE:
 {release_note_text}"""
 
-    message = client.messages.create(
+    message = complete(
+        client,
         model=MODEL,
         max_tokens=256,
         messages=[{'role': 'user', 'content': prompt}]
@@ -87,11 +90,10 @@ def match_with_labels(release_note_text, sops):
     Extract tags from the release note, match against Confluence labels.
     Only SOPs with overlapping labels are flagged as affected.
     """
-    client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+    client = get_client()
 
-    print("  [SOPatch] Extracting release note tags...")
     note_tags = set(extract_tags_from_release_note(client, release_note_text))
-    print(f"  Tags: {', '.join(note_tags)}")
+    log.info("tagger.tags_extracted", tags=sorted(note_tags))
 
     affected = []
     unaffected = []
@@ -119,7 +121,7 @@ def match_sops_with_ai(release_note_text, sops):
     Fallback: send release note + all SOP content to Claude.
     Used when SOPs have no labels set yet (before setup_tags.py is run).
     """
-    client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+    client = get_client()
 
     sop_list = '\n\n'.join([
         f"Page ID: {sop['page_id']}\nTitle: {sop['title']}\n\n{sop['content']}"
@@ -143,7 +145,8 @@ RELEASE NOTE:
 SOPs TO REVIEW:
 {sop_list}"""
 
-    message = client.messages.create(
+    message = complete(
+        client,
         model=MODEL,
         max_tokens=512,
         messages=[{'role': 'user', 'content': prompt}]
@@ -177,18 +180,17 @@ def run_tagger(release_note_text):
     Uses label-based matching if labels exist on the SOP pages.
     Falls back to full AI scan if no labels are found (run setup_tags.py to fix).
     """
-    print("  [SOPatch] Loading SOPs from Confluence...")
     sops = load_sops_from_confluence()
-    print(f"  Loaded {len(sops)} SOP(s).")
+    log.info("tagger.sops_loaded", count=len(sops))
 
     # Check if any SOPs have labels
     sops_with_labels = [s for s in sops if s['labels']]
 
     if sops_with_labels:
-        print(f"  [SOPatch] Labels found -- using label-based matching.")
+        log.info("tagger.match_mode", mode="labels")
         return _build_result(*match_with_labels(release_note_text, sops))
     else:
-        print("  [SOPatch] No labels found -- using full AI scan. Run setup_tags.py to enable label matching.")
+        log.info("tagger.match_mode", mode="full_ai_scan", hint="run setup_tags.py to enable label matching")
         return _build_result(*match_sops_with_ai(release_note_text, sops))
 
 

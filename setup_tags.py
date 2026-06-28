@@ -12,13 +12,12 @@ Usage:
     python setup_tags.py
 """
 
-import os
 import re
 import json
-import anthropic
 from dotenv import load_dotenv
 from core.confluence import get_sop_pages, set_page_labels, get_credentials
 from core.config import MODEL
+from core.llm import get_client, complete
 
 load_dotenv()
 
@@ -47,7 +46,8 @@ SOP TITLE: {sop_title}
 SOP CONTENT:
 {sop_content}"""
 
-    message = client.messages.create(
+    message = complete(
+        client,
         model=MODEL,
         max_tokens=256,
         messages=[{'role': 'user', 'content': prompt}]
@@ -64,7 +64,7 @@ SOP CONTENT:
 
 def run_setup():
     creds = get_credentials()
-    client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+    client = get_client()
 
     print("SOPatch Label Setup")
     print(f"Fetching SOPs from Confluence (parent page: {creds['sop_parent_id']})...\n")

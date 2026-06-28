@@ -3,3 +3,6 @@ anthropic
 requests
 python-dotenv
 gunicorn
+tenacity
+structlog
+pydantic

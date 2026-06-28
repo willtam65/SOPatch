@@ -7,12 +7,15 @@ Returns flagged sections and suggested rewrites for each SOP.
 """
 
 import os
-import anthropic
 from dotenv import load_dotenv
 from core.config import MODEL
 from core.grounding import ground_analysis
+from core.llm import get_client, complete
+from core.logging import get_logger
 
 load_dotenv()
+
+log = get_logger("sopatch.analyzer")
 
 
 def build_prompt(release_note_text, sop_content, sop_title):
@@ -63,7 +66,8 @@ def analyze_sop(client, release_note_text, sop):
     """
     prompt = build_prompt(release_note_text, sop['content'], sop['title'])
 
-    message = client.messages.create(
+    message = complete(
+        client,
         model=MODEL,
         max_tokens=4096,
         messages=[
@@ -75,7 +79,7 @@ def analyze_sop(client, release_note_text, sop):
     # can't be found in the source SOP (a hallucinated edit).
     analysis, dropped = ground_analysis(message.content[0].text, sop['content'])
     if dropped:
-        print(f"  [SOPatch] Dropped {len(dropped)} ungrounded section(s) from {sop['title']}")
+        log.info("analyzer.dropped_ungrounded", sop=sop['title'], count=len(dropped))
 
     return {
         'filename': sop['filename'],
@@ -91,10 +95,10 @@ def analyze_all_sops(release_note_text, affected_sops):
     Creates the Claude client once and reuses it across all calls.
     Returns a list of analysis results.
     """
-    client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+    client = get_client()
     results = []
     for sop in affected_sops:
-        print(f"  Analyzing: {sop['title']}...")
+        log.info("analyzer.analyzing", sop=sop['title'])
         result = analyze_sop(client, release_note_text, sop)
         results.append(result)
     return results
@@ -105,7 +109,7 @@ def refine_section(release_note_text, sop_title, section_name, current_wording, 
     Re-run Claude on a single section with additional user instruction.
     Returns just the new suggested rewrite text.
     """
-    client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+    client = get_client()
 
     prompt = f"""You are a CX Operations specialist refining a suggested SOP rewrite.
 
@@ -131,7 +135,8 @@ Your task: Produce an improved suggested rewrite that follows the user's instruc
 Keep the same style and format as the original SOP section.
 Output ONLY the new rewrite text -- no labels, no explanation, no preamble."""
 
-    message = client.messages.create(
+    message = complete(
+        client,
         model=MODEL,
         max_tokens=1024,
         messages=[{'role': 'user', 'content': prompt}]
