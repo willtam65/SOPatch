@@ -69,6 +69,34 @@ def run_live(cases):
     return rows
 
 
+def run_replay():
+    """Re-score the saved model outputs in results/latest.json with the current
+    matcher -- no API calls. Isolates a matching change: same extracted tags,
+    new predictions. Returns (rows, model)."""
+    path = RESULTS_DIR / "latest.json"
+    if not path.exists():
+        sys.exit("No results/latest.json to replay -- run --live first.")
+    data = json.loads(path.read_text())
+    rows = []
+    for case in data["cases"]:
+        predicted = predict_affected(case["extracted_tags"])
+        result = score_case(predicted, set(case["gold"]))
+        rows.append(
+            {
+                "id": case["id"],
+                "summary": case.get("summary", ""),
+                "hard": case.get("hard", False),
+                "extracted_tags": case["extracted_tags"],
+                "predicted": sorted(predicted),
+                "gold": sorted(case["gold"]),
+                **result,
+            }
+        )
+        flag = "PASS" if result["exact_match"] else "FAIL"
+        print(f"  [{flag}] {case['id']}")
+    return rows, data.get("model")
+
+
 def print_table(rows, summary):
     print()
     header = f"{'CASE':<24}{'HARD':<6}{'GOLD':<22}{'PREDICTED':<22}{'RESULT'}"
@@ -118,11 +146,24 @@ def main(argv=None):
         help="call Claude to extract tags and compute real metrics",
     )
     parser.add_argument(
+        "--replay",
+        action="store_true",
+        help="re-score the saved model outputs with the current matcher (no API calls)",
+    )
+    parser.add_argument(
         "--limit", type=int, default=None, help="only run the first N cases"
     )
     args = parser.parse_args(argv)
 
     validate()
+
+    if args.replay:
+        rows, model = run_replay()
+        summary = aggregate(rows)
+        print_table(rows, summary)
+        save_results(rows, summary, model)
+        return 0
+
     cases = CASES[: args.limit] if args.limit else CASES
 
     if not args.live or args.dry_run:

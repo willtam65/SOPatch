@@ -25,6 +25,7 @@ import anthropic
 from dotenv import load_dotenv
 from core.confluence import get_sop_pages, get_credentials
 from core.config import MODEL
+from core.matching import matched_labels
 
 load_dotenv()
 
@@ -96,15 +97,14 @@ def match_with_labels(release_note_text, sops):
     unaffected = []
 
     for sop in sops:
-        sop_labels = set(sop['labels'])
-        overlap = note_tags.intersection(sop_labels)
+        overlap = matched_labels(note_tags, sop['labels'])
         if overlap:
             affected.append({
                 'page_id': sop['page_id'],
                 'filename': sop['filename'],
                 'title': sop['title'],
                 'content': sop['content'],
-                'matching_tags': list(overlap)
+                'matching_tags': sorted(overlap)
             })
         else:
             unaffected.append(sop['title'])

@@ -17,6 +17,8 @@ retrieval, not the model" is the lesson it teaches.
 
 from __future__ import annotations
 
+from core.matching import matched_labels
+
 # Four SOPs and their labels (as setup_tags.py would generate them in Confluence).
 SOP_FIXTURES = {
     "qa": {
@@ -231,16 +233,15 @@ def all_sop_ids():
 
 
 def predict_affected(note_tags):
-    """Mirror the live tagger: intersect extracted note tags with SOP labels.
+    """Mirror the live tagger: match extracted note tags against SOP labels.
 
-    A SOP is flagged iff at least one extracted tag exactly matches one of its
-    labels -- the same set intersection core.tagger.match_with_labels performs.
+    A SOP is flagged iff at least one extracted tag matches one of its labels,
+    using the same token-aware rule core.tagger.match_with_labels uses.
     """
-    note_tags = set(note_tags)
     return {
         sop_id
         for sop_id, fixture in SOP_FIXTURES.items()
-        if note_tags & set(fixture["labels"])
+        if matched_labels(note_tags, fixture["labels"])
     }
 
 
