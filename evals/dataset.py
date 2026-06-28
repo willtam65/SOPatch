@@ -224,6 +224,74 @@ CASES = [
         "gold": {"reporting"},
         "hard": True,
     },
+    {
+        "id": "sla_pause_policy",
+        "summary": "SLA clock pauses while waiting on the customer",
+        "note": (
+            "SLA policy change: when a ticket is waiting on a customer reply, "
+            "the SLA clock now pauses, and resumes once the customer responds. "
+            "SLA breach reviews should exclude paused time."
+        ),
+        "gold": {"sla"},
+        "hard": False,
+    },
+    {
+        "id": "qa_calibration",
+        "summary": "Mandatory QA calibration sessions",
+        "note": (
+            "Monthly QA calibration sessions are now mandatory. Every reviewer "
+            "must align their agent QA scoring against a shared rubric so the "
+            "scorecard is applied consistently."
+        ),
+        "gold": {"qa"},
+        "hard": False,
+    },
+    {
+        "id": "facilities_fire_drill",
+        "summary": "Fire drill notice (should flag nothing)",
+        "note": (
+            "Facilities notice: a quarterly fire drill is scheduled for next "
+            "Tuesday at 10am. Everyone must evacuate via stairwell B and gather "
+            "at the assembly point across the street."
+        ),
+        "gold": set(),
+        "hard": False,
+    },
+    # --- Adversarial: the process is described with vocabulary that shares no
+    #     tokens with the SOP's labels, so token matching alone should miss it.
+    {
+        "id": "qa_as_call_listening",
+        "summary": "QA described as listening to call recordings (token-disjoint)",
+        "note": (
+            "Starting next week, team leads will listen back to a sample of "
+            "recorded customer conversations and grade how well each agent "
+            "handled the interaction, noting anything that was said incorrectly."
+        ),
+        "gold": {"qa"},
+        "hard": True,
+    },
+    {
+        "id": "reporting_as_leadership_numbers",
+        "summary": "Reporting described obliquely as 'the numbers for leadership' (token-disjoint)",
+        "note": (
+            "The figures we compile for the leadership team every Monday have to "
+            "change this month. A major shift means the way we put those numbers "
+            "together, and what we compare them against, is no longer the same."
+        ),
+        "gold": {"reporting"},
+        "hard": True,
+    },
+    {
+        "id": "triage_as_front_door",
+        "summary": "Triage described as sorting incoming requests (token-disjoint)",
+        "note": (
+            "When a new request arrives, whoever picks it up first now has to "
+            "sort it by how urgent it is using the new severity guide, then hand "
+            "it to the right group, before any work begins."
+        ),
+        "gold": {"triage"},
+        "hard": True,
+    },
 ]
 
 

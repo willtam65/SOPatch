@@ -3,7 +3,7 @@
 
 AI-powered SOP update detection. Paste a release note, get flagged sections and suggested rewrites, push directly to Confluence.
 
-[![CI](https://github.com/willtam65/SOPatch/actions/workflows/ci.yml/badge.svg)](https://github.com/willtam65/SOPatch/actions/workflows/ci.yml) ![version](https://img.shields.io/badge/version-0.2-blue) ![Python](https://img.shields.io/badge/python-3.12-green) ![evals](https://img.shields.io/badge/tagger%20eval-P%201.00%20%C2%B7%20R%201.00-success)
+[![CI](https://github.com/willtam65/SOPatch/actions/workflows/ci.yml/badge.svg)](https://github.com/willtam65/SOPatch/actions/workflows/ci.yml) ![version](https://img.shields.io/badge/version-0.2-blue) ![Python](https://img.shields.io/badge/python-3.12-green) ![evals](https://img.shields.io/badge/tagger%20eval-P%201.00%20%C2%B7%20R%200.95-success)
 
 ## What it does
 
@@ -40,18 +40,22 @@ The eval earned its keep immediately. The original matcher used exact-string
 label intersection, and the eval showed it was missing real cases: the model
 extracted `weekly-cx-reporting` but the label was `weekly-reporting`, so they
 never matched. **The misses were retrieval, not the model.** Replacing exact
-matching with a token-aware matcher (`core/matching.py`) closed the gap. It was
-scored by replaying the *same* model outputs, so the only variable is the matcher:
+matching with a token-aware matcher (`core/matching.py`) recovered them. Scored
+by replaying the *same* model outputs on the original 14 cases, so the only
+variable is the matcher:
 
 | Matcher | Precision | Recall | F1 | Exact-match |
 | --- | --- | --- | --- | --- |
 | Exact string | 1.00 | 0.81 | 0.90 | 12/14 |
 | Token-aware | 1.00 | 1.00 | 1.00 | 14/14 |
 
-100% on 14 cases means the set no longer discriminates, not that retrieval is
-"solved." The next step is a larger set with true-synonym cases that token
-matching can't bridge. That's where embeddings and reranking would earn their
-cost. Scoring is pure and unit-tested (`pytest`), so CI runs it without secrets.
+End to end on the full set (now 20 labelled cases, run live) it scores
+**precision 1.00, recall 0.95**. The remaining miss is a multi-SOP case where
+the model's tag extraction, which varies from run to run, didn't emit a label
+that overlapped the doc. Closing that gap means matching on the document's
+content directly (embeddings and reranking) rather than relying on the model to
+emit a matching label string, which is the planned next step. Scoring is pure
+and unit-tested (`pytest`), so CI runs it without secrets.
 
 ## Setup
 
