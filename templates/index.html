@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SOPatch -- AI-Powered SOP Update Detection</title>
+  <title>SOPatch: AI-Powered SOP Update Detection</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=DM+Sans:wght@400;500&family=DM+Mono&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/static/style.css"/>
 </head>
@@ -21,7 +21,7 @@
       <a href="https://github.com/willtam65/SOPatch/tree/main/evals" target="_blank" rel="noopener">Evals</a>
       <a href="https://github.com/willtam65/SOPatch" target="_blank" rel="noopener">GitHub</a>
     </nav>
-    <div class="header-badge">v0.2 -- Active Development</div>
+    <div class="header-badge">v0.2 &middot; Active Development</div>
   </div>
 </div>
 
@@ -41,7 +41,7 @@
       <div class="intro-headline">Outdated SOPs, caught automatically.</div>
       <p class="intro-sub">
         Paste a product release note. SOPatch flags which SOPs went stale, drafts the fix,
-        and only edits wording it can find in the source &mdash; you approve before anything ships.
+        and only edits wording it can find in the source. You approve before anything ships.
       </p>
       <ol class="how-steps">
         <li><span class="how-step-num">1</span> A cheap label-match narrows the docs <em>before</em> any model call</li>
@@ -83,7 +83,7 @@
     </div>
 
     <div class="footer">
-      SOPatch v0.2 &mdash; Built by Will Tam &mdash;
+      SOPatch v0.2 &middot; Built by Will Tam &middot;
       <a href="https://github.com/willtam65/SOPatch" target="_blank" rel="noopener" style="color:#aaa;">GitHub</a>
     </div>
   </div>
@@ -383,7 +383,7 @@
 
       // Demo Mode: reuse the success UI, but with a demo notice instead of a Confluence link.
       if (data.demo) {
-        btn.querySelector('span').textContent = 'Demo — push simulated';
+        btn.querySelector('span').textContent = 'Demo: push simulated';
         resultDiv.innerHTML = `<div class="demo-push-notice">${escapeHtml(data.message)}</div>`;
         return;
       }
@@ -586,7 +586,7 @@
           <div class="section-field-label rewrite-label-row">
             <span>Suggested rewrite</span>
             ${DEMO_MODE
-              ? `<span class="refine-disabled" title="Refine uses live AI — disabled in demo.">Refine uses live AI — disabled in demo.</span>`
+              ? `<span class="refine-disabled" title="Refine uses live AI, disabled in demo.">Refine uses live AI, disabled in demo.</span>`
               : `<button class="btn-refine" onclick="openRefine(this)" title="Ask AI to refine this suggestion">✦ Refine</button>`
             }
           </div>

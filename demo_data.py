@@ -14,13 +14,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SOPS_DIR = os.path.join(BASE_DIR, 'data', 'sops')
 
 # Visual + copy constants used by the demo branches.
-DEMO_BANNER_TEXT = 'DEMO MODE — sample data, no live Confluence connection'
+DEMO_BANNER_TEXT = 'DEMO MODE: sample data, no live Confluence connection'
 DEMO_PUSH_MESSAGE = (
-    'Demo Mode — in the live app, this pushes the approved rewrite to '
+    'Demo Mode. In the live app, this pushes the approved rewrite to '
     'Confluence with automatic version and date tracking. Live push is '
     'disabled in this demo.'
 )
-DEMO_REFINE_MESSAGE = 'Refine uses live AI — disabled in demo.'
+DEMO_REFINE_MESSAGE = 'Refine uses live AI, disabled in demo.'
 
 
 def _read_sop(filename):
