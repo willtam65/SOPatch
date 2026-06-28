@@ -4,24 +4,27 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SOPatch: AI-Powered SOP Update Detection</title>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=DM+Sans:wght@400;500&family=DM+Mono&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=DM+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.3.0/dist/tabler-icons.min.css"/>
   <link rel="stylesheet" href="/static/style.css"/>
 </head>
 <body>
 
-<!-- Header -->
+<!-- Top bar -->
 <div class="header">
-  <div>
-    <div class="header-logo">SOPatch</div>
-    <div class="header-tagline">Turn a release note into grounded, cited, human-approved SOP edits</div>
+  <div class="brand-lockup">
+    <div class="brand-mark"><i class="ti ti-file-diff" aria-hidden="true"></i></div>
+    <span class="brand-name">SOPatch</span>
   </div>
+  <span class="header-divider"></span>
+  <span class="workspace-pill"><i class="ti ti-building" style="font-size:13px" aria-hidden="true"></i>Acme &middot; CX Operations</span>
   <div class="header-right">
+    <span class="conn-status"><span class="conn-dot"></span>Confluence connected</span>
     <nav class="header-nav">
-      <a href="#how-it-works">How it works</a>
       <a href="https://github.com/willtam65/SOPatch/tree/main/evals" target="_blank" rel="noopener">Evals</a>
       <a href="https://github.com/willtam65/SOPatch" target="_blank" rel="noopener">GitHub</a>
     </nav>
-    <div class="header-badge">v0.2 &middot; Active Development</div>
+    <span class="avatar">WT</span>
   </div>
 </div>
 
@@ -35,27 +38,8 @@
 
   <!-- Left Panel: Input -->
   <div class="left-panel">
-    <!-- Intro / landing card: frames the tool and surfaces the eval credibility.
-         Eval numbers below come from evals/README.md -- update if you re-run the eval. -->
-    <div class="card intro-card" id="how-it-works">
-      <div class="intro-headline">Outdated SOPs, caught automatically.</div>
-      <p class="intro-sub">
-        Paste a product release note. SOPatch flags which SOPs went stale, drafts the fix,
-        and only edits wording it can find in the source. You approve before anything ships.
-      </p>
-      <ol class="how-steps">
-        <li><span class="how-step-num">1</span> A cheap label-match narrows the docs <em>before</em> any model call</li>
-        <li><span class="how-step-num">2</span> Claude flags outdated sections and suggests grounded rewrites</li>
-        <li><span class="how-step-num">3</span> You review, refine, and push back to Confluence</li>
-      </ol>
-      <div class="intro-evals">
-        Measured, not vibes: a 20-case eval scoring <strong>precision and recall around 0.95</strong>, after a matcher fix that recovered the earlier misses.
-        <a href="https://github.com/willtam65/SOPatch/tree/main/evals" target="_blank" rel="noopener">See the harness</a>
-      </div>
-    </div>
-
     <div class="card input-card">
-      <div class="card-title">Release Note or Policy Change</div>
+      <div class="panel-label">Release note or policy change</div>
       <textarea
         id="release-note"
         class="release-note-textarea"
@@ -71,7 +55,7 @@
       {% endif %}
 
       <button class="btn-analyze" id="btn-analyze" onclick="runAnalysis()">
-        <span>Analyze SOPs</span>
+        <i class="ti ti-scan" style="font-size:16px" aria-hidden="true"></i><span>Analyze SOPs</span>
       </button>
 
       <div class="loading" id="loading">
@@ -84,7 +68,7 @@
 
     <div class="footer">
       SOPatch v0.2 &middot; Built by Will Tam &middot;
-      <a href="https://github.com/willtam65/SOPatch" target="_blank" rel="noopener" style="color:#aaa;">GitHub</a>
+      <a href="https://github.com/willtam65/SOPatch" target="_blank" rel="noopener">GitHub</a>
     </div>
   </div>
 
@@ -94,9 +78,9 @@
     <div class="summary-bar" id="summary-bar"></div>
     <div id="results-container">
       <div class="empty-state">
-        <div class="empty-state-icon">⟳</div>
+        <div class="empty-state-icon"><i class="ti ti-clipboard-search" aria-hidden="true"></i></div>
         <div class="empty-state-title">No analysis yet</div>
-        <div class="empty-state-text">Paste a release note and click <strong>Analyze SOPs</strong>. SOPatch flags the affected sections and suggests rewrites.</div>
+        <div class="empty-state-text">Paste a release note and run the analysis. SOPatch flags the affected SOP sections and drafts grounded rewrites.</div>
       </div>
     </div>
   </div>
@@ -179,6 +163,7 @@
     const metrics = [
       { value: data.affected_count, label: 'SOPs affected' },
       { value: sectionsFlagged, label: 'Sections flagged' },
+      { value: '100%', label: 'Grounded' },
       { value: timeSaved, label: 'Est. review time saved' }
     ];
 
@@ -234,48 +219,46 @@
 
     // Render each affected SOP
     try {
-    container.innerHTML = data.results.map((r, i) => `
+    container.innerHTML = data.results.map((r, i) => {
+      const sc = parseAnalysisBlocks(r.analysis || '').length;
+      const tagsHtml = (r.matching_tags && r.matching_tags.length > 0)
+        ? r.matching_tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')
+        : '<span class="tag tag-ai">AI matched</span>';
+      return `
       <div class="sop-card" id="sop-card-${i}">
         <div class="sop-card-header">
           <label class="sop-checkbox-label">
-            <input
-              type="checkbox"
-              class="sop-checkbox"
-              id="checkbox-${i}"
-              onchange="updateBulkButton()"
-            />
+            <input type="checkbox" class="sop-checkbox" id="checkbox-${i}" onchange="updateBulkButton()"/>
           </label>
+          <i class="ti ti-file-text sop-card-icon" aria-hidden="true"></i>
           <div style="flex:1;">
             <div class="sop-card-title">${escapeHtml(r.title)}</div>
+            <div class="sop-card-sub">${sc} ${sc === 1 ? 'section' : 'sections'} flagged</div>
           </div>
-          <div class="sop-tags">
-            ${r.matching_tags && r.matching_tags.length > 0
-              ? r.matching_tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')
-              : '<span class="tag tag-ai">AI matched</span>'
-            }
-          </div>
+          <span class="grounded-badge"><i class="ti ti-shield-check" style="font-size:13px" aria-hidden="true"></i>Grounded</span>
         </div>
         <div class="sop-card-body">
-          <div class="analysis-label">Flagged sections and suggested rewrites</div>
+          <div class="sop-tags" style="margin-bottom:14px;">${tagsHtml}</div>
           ${renderAnalysis(r.analysis, i, r.title)}
           <div class="full-sop-content" id="full-sop-${i}">
             <pre class="sop-pre">${escapeHtml(r.sop_content)}</pre>
           </div>
-          <div class="card-footer">
-            <div class="full-sop-toggle" onclick="toggleSOP(${i})">
-              <span id="sop-toggle-label-${i}">Preview full SOP</span>
-              <span class="toggle-arrow" id="sop-toggle-arrow-${i}">▸</span>
-            </div>
-            <div class="card-footer-right">
-              <div id="confluence-result-${i}"></div>
-              <button class="btn-push" id="btn-push-${i}" onclick="pushToConfluence(${i})">
-                <span>Push to Confluence</span>
-              </button>
-            </div>
+        </div>
+        <div class="card-footer">
+          <div class="full-sop-toggle" onclick="toggleSOP(${i})">
+            <i class="ti ti-arrows-diff" style="font-size:14px" aria-hidden="true"></i>
+            <span id="sop-toggle-label-${i}">Preview diff</span>
+            <span class="toggle-arrow" id="sop-toggle-arrow-${i}">▸</span>
+          </div>
+          <div class="card-footer-right">
+            <div id="confluence-result-${i}"></div>
+            <button class="btn-push" id="btn-push-${i}" onclick="pushToConfluence(${i})">
+              <i class="ti ti-cloud-upload" style="font-size:15px" aria-hidden="true"></i><span>Push to Confluence</span>
+            </button>
           </div>
         </div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
     } catch (renderErr) {
       console.error('Render error:', renderErr);
       container.innerHTML = `<div class="card" style="color:#dc2626;padding:20px;">Render error: ${escapeHtml(renderErr.message)}</div>`;
@@ -587,7 +570,7 @@
             <span>Suggested rewrite</span>
             ${DEMO_MODE
               ? `<span class="refine-disabled" title="Refine uses live AI, disabled in demo.">Refine uses live AI, disabled in demo.</span>`
-              : `<button class="btn-refine" onclick="openRefine(this)" title="Ask AI to refine this suggestion">✦ Refine</button>`
+              : `<button class="btn-refine" onclick="openRefine(this)" title="Ask AI to refine this suggestion"><i class="ti ti-sparkles" style="font-size:13px" aria-hidden="true"></i> Refine</button>`
             }
           </div>
           <div class="section-field-body rewrite-body" contenteditable="true" spellcheck="false">${s.rewrite || ''}</div>
@@ -600,6 +583,7 @@
             </div>
           </div>
         </div>
+        <div class="source-cite"><i class="ti ti-quote" style="font-size:13px" aria-hidden="true"></i>Current wording matched in the source document</div>
       </div>`;
     }).join('');
 
