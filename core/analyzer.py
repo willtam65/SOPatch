@@ -6,7 +6,6 @@ Sends each SOP to Claude with the release note for comparison.
 Returns flagged sections and suggested rewrites for each SOP.
 """
 
-import os
 from dotenv import load_dotenv
 from core.config import MODEL
 from core.grounding import ground_analysis
@@ -142,28 +141,3 @@ Output ONLY the new rewrite text -- no labels, no explanation, no preamble."""
         messages=[{'role': 'user', 'content': prompt}]
     )
     return message.content[0].text.strip()
-
-
-# Quick test -- run this file directly to verify analyzer works
-if __name__ == '__main__':
-    from tagger import run_tagger
-
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    release_note_path = os.path.join(base_dir, 'data', 'release_note.txt')
-    sop_directory = os.path.join(base_dir, 'data', 'sops')
-
-    print("Running tagger...")
-    tagger_result = run_tagger(release_note_path, sop_directory)
-
-    print(f"Analyzing {len(tagger_result['affected_sops'])} affected SOPs...\n")
-    results = analyze_all_sops(
-        tagger_result['release_note_text'],
-        tagger_result['affected_sops']
-    )
-
-    for result in results:
-        print(f"\n{'='*60}")
-        print(f"SOP: {result['title']}")
-        print(f"Matched on: {result['matching_tags']}")
-        print(f"{'='*60}")
-        print(result['analysis'])
