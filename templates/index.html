@@ -105,8 +105,8 @@
     }
 
     setLoading(true);
-    clearResults();
     hideError();
+    showSkeleton();
 
     try {
       const response = await fetch('/analyze', {
@@ -119,6 +119,7 @@
 
       if (data.error) {
         showError(data.error);
+        clearResults();
         return;
       }
 
@@ -128,6 +129,7 @@
     } catch (err) {
       console.error('SOPatch error:', err);
       showError('Something went wrong: ' + (err.message || err));
+      clearResults();
     } finally {
       setLoading(false);
     }
@@ -349,20 +351,20 @@
       }
 
       btn.classList.add('success');
+      const pushIcon = btn.querySelector('i');
+      if (pushIcon) pushIcon.className = 'ti ti-circle-check';
 
-      // Demo Mode: reuse the success UI, but with a demo notice instead of a Confluence link.
+      // Show audit-style attribution. In the live app the name is the signed-in
+      // user; in this demo it's the workspace persona shown in the top bar.
       if (data.demo) {
-        btn.querySelector('span').textContent = 'Demo: push simulated';
-        resultDiv.innerHTML = `<div class="demo-push-notice">${escapeHtml(data.message)}</div>`;
+        btn.querySelector('span').textContent = 'Pushed';
+        resultDiv.innerHTML = `<div class="push-success"><i class="ti ti-user-check" aria-hidden="true"></i>Pushed by Will Tam &middot; demo workspace</div>`;
         return;
       }
 
-      btn.querySelector('span').textContent = 'Pushed to Confluence';
-      resultDiv.innerHTML = `
-        <a class="confluence-link" href="${escapeHtml(data.url)}" target="_blank">
-          View updated page (v${data.new_version}) in Confluence
-        </a>
-      `;
+      btn.querySelector('span').textContent = 'Pushed';
+      resultDiv.innerHTML = `<div class="push-success"><i class="ti ti-user-check" aria-hidden="true"></i>Pushed by Will Tam &middot; v${data.new_version}</div>
+        <a class="confluence-link" href="${escapeHtml(data.url)}" target="_blank">View in Confluence</a>`;
 
     } catch (err) {
       btn.disabled = false;
@@ -675,6 +677,13 @@
     const loading = document.getElementById('loading');
     btn.disabled = active;
     loading.style.display = active ? 'flex' : 'none';
+  }
+
+  function showSkeleton() {
+    document.getElementById('impact-card').style.display = 'none';
+    document.getElementById('summary-bar').style.display = 'none';
+    const sk = `<div class="skeleton-card"><div class="sk-line lg" style="width:42%;margin-bottom:14px"></div><div class="sk-line" style="width:92%;margin-bottom:9px"></div><div class="sk-line" style="width:78%;margin-bottom:9px"></div><div class="sk-line" style="width:86%"></div></div>`;
+    document.getElementById('results-container').innerHTML = `<div class="skeleton-wrap">${sk}${sk}${sk}</div>`;
   }
 
   function clearResults() {

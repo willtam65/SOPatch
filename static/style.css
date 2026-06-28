@@ -24,6 +24,9 @@
   --danger-text: #b42318;
   --warn-bg: #fdf4e3;
   --warn-text: #8a5a08;
+  --warn-border: #f4e4c0;
+  --success-border: #c9ead8;
+  --danger-border: #f3cccc;
 
   --r: 8px;
   --r-lg: 12px;
@@ -127,7 +130,7 @@ input:focus-visible, [contenteditable="true"]:focus-visible {
 .demo-banner {
   background: var(--warn-bg);
   color: var(--warn-text);
-  border-bottom: 1px solid #f4e4c0;
+  border-bottom: 1px solid var(--warn-border);
   font-size: 13px;
   font-weight: 500;
   text-align: center;
@@ -185,13 +188,13 @@ input:focus-visible, [contenteditable="true"]:focus-visible {
   padding: 13px 14px;
   border: 1px solid var(--border-strong);
   border-radius: var(--r);
-  font-family: var(--mono);
-  font-size: 12px;
-  line-height: 1.65;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
   color: var(--text);
   resize: none;
   outline: none;
-  background: #fbfcfe;
+  background: var(--surface-2);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .release-note-textarea:focus {
@@ -253,7 +256,7 @@ input:focus-visible, [contenteditable="true"]:focus-visible {
   margin-top: 12px;
   background: var(--danger-bg);
   color: var(--danger-text);
-  border: 1px solid #f3cccc;
+  border: 1px solid var(--danger-border);
   border-radius: var(--r);
   padding: 9px 12px;
   font-size: 13px;
@@ -374,10 +377,10 @@ input:focus-visible, [contenteditable="true"]:focus-visible {
 .rewrite-label-row { display: flex; align-items: center; justify-content: space-between; }
 .field-rewrite .section-field-body {
   background: var(--success-bg);
-  border: 1px solid #c9ead8;
+  border: 1px solid var(--success-border);
   border-radius: var(--r);
   padding: 9px 11px;
-  color: #064b35;
+  color: var(--success-text);
   outline: none;
 }
 .field-rewrite .section-field-body:focus {
@@ -451,7 +454,7 @@ input:focus-visible, [contenteditable="true"]:focus-visible {
 .confluence-link { font-size: 12px; color: var(--accent); font-weight: 500; }
 .demo-push-notice {
   margin-top: 8px; background: var(--success-bg); color: var(--success-text);
-  border: 1px solid #c9ead8; border-radius: var(--r); padding: 8px 11px;
+  border: 1px solid var(--success-border); border-radius: var(--r); padding: 8px 11px;
   font-size: 12px; line-height: 1.5; max-width: 340px;
 }
 
@@ -482,3 +485,41 @@ input:focus-visible, [contenteditable="true"]:focus-visible {
 .sk-line { height: 12px; border-radius: 5px; background: var(--surface-2); animation: pulse 1.3s ease-in-out infinite; }
 .sk-line.lg { height: 16px; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* ── Push success / attribution ── */
+.push-success {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--success-text); font-weight: 500;
+}
+.btn-push i { transition: transform 0.2s; }
+
+/* ── Responsive ── */
+@media (max-width: 880px) {
+  .header { padding: 0 14px; gap: 10px; }
+  .header-divider, .workspace-pill, .conn-status { display: none; }
+  .main { flex-direction: column; overflow-y: auto; }
+  .left-panel {
+    flex: none; width: 100%; max-width: none; min-width: 0;
+    border-right: none; border-bottom: 1px solid var(--border);
+    overflow: visible; padding: 16px;
+  }
+  .input-card { flex: none; }
+  .release-note-textarea { flex: none; min-height: 150px; }
+  .right-panel { overflow: visible; padding: 16px 16px 32px; }
+  .impact-metrics { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand: #5a6bf2; --brand-700: #6e7df6;
+    --accent: #8d9bff; --accent-bg: #232a4d;
+    --bg: #0d0f17; --surface: #161a26; --surface-2: #1d2230;
+    --border: #2a3042; --border-strong: #3a4258;
+    --text: #e9ebf4; --text-2: #a4abc2; --text-3: #717892;
+    --success: #2fd49a; --success-bg: #122a20; --success-text: #57d6a3; --success-border: #1f4837;
+    --danger: #f06a6a; --danger-bg: #2c1818; --danger-text: #f3a0a0; --danger-border: #4a2626;
+    --warn-bg: #2a2412; --warn-text: #dcb05f; --warn-border: #463c1c;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.25);
+  }
+}
