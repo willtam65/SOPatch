@@ -135,6 +135,12 @@ CONFLUENCE_SPACE_KEY=
 CONFLUENCE_SOP_PARENT_ID=
 ```
 
+## Roadmap
+
+Where SOPatch is headed, and what it deliberately defers and why, is in
+[ROADMAP.md](ROADMAP.md). The short version: the next real build is an automated
+trigger (watch Jira for the change and run itself), not more manual input.
+
 ## Built by
 
 Will Tam, [LinkedIn](https://linkedin.com/in/willtam65)
