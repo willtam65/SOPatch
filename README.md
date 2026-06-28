@@ -20,7 +20,7 @@ When a product release or policy change drops, SOPatch:
 ## Stack
 
 - Python / Flask
-- Claude API (claude-opus-4-8)
+- Claude API (Haiku for cheap tag extraction and the content gate, Sonnet for analysis and rewrites)
 - Confluence REST API
 - Vanilla JS frontend
 
@@ -70,6 +70,11 @@ ones, lowering precision and adding a call per analysis. That F1 cost isn't
 worth it for most runs, so it's left off by default and turned on when recall
 matters more than a reviewer dismissing the occasional false alarm. Scoring is
 pure and unit-tested (`pytest`), so CI runs it without secrets.
+
+The eval also gates cost. The pipeline runs tag extraction and the content gate
+on Haiku and the SOP analysis on Sonnet, rather than Opus across the board,
+which cuts token cost by roughly 75% with no measurable accuracy drop on this
+set (re-running the eval after the switch is what confirmed it).
 
 ## Setup
 

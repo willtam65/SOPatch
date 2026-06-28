@@ -16,7 +16,7 @@ import re
 import json
 from dotenv import load_dotenv
 from core.confluence import get_sop_pages, set_page_labels, get_credentials
-from core.config import MODEL
+from core.config import MODEL_FAST
 from core.llm import get_client, complete
 
 load_dotenv()
@@ -48,7 +48,7 @@ SOP CONTENT:
 
     message = complete(
         client,
-        model=MODEL,
+        model=MODEL_FAST,
         max_tokens=256,
         messages=[{'role': 'user', 'content': prompt}]
     )

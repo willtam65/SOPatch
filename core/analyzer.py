@@ -7,7 +7,7 @@ Returns flagged sections and suggested rewrites for each SOP.
 """
 
 from dotenv import load_dotenv
-from core.config import MODEL
+from core.config import MODEL_SMART
 from core.grounding import ground_sections
 from core.llm import get_client, complete
 from core.logging import get_logger
@@ -60,7 +60,7 @@ def analyze_sop(client, release_note_text, sop):
 
     message = complete(
         client,
-        model=MODEL,
+        model=MODEL_SMART,
         max_tokens=4096,
         tools=[ANALYSIS_TOOL],
         tool_choice={'type': 'tool', 'name': ANALYSIS_TOOL['name']},
@@ -136,7 +136,7 @@ Output ONLY the new rewrite text -- no labels, no explanation, no preamble."""
 
     message = complete(
         client,
-        model=MODEL,
+        model=MODEL_SMART,
         max_tokens=1024,
         messages=[{'role': 'user', 'content': prompt}]
     )

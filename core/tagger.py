@@ -26,7 +26,7 @@ import re
 import json
 from dotenv import load_dotenv
 from core.confluence import get_sop_pages, get_credentials
-from core.config import MODEL
+from core.config import MODEL_FAST
 from core.matching import matched_labels
 from core.llm import get_client, complete
 from core.logging import get_logger
@@ -73,7 +73,7 @@ RELEASE NOTE:
 
     message = complete(
         client,
-        model=MODEL,
+        model=MODEL_FAST,
         max_tokens=256,
         messages=[{'role': 'user', 'content': prompt}]
     )
@@ -173,7 +173,7 @@ SOPs TO REVIEW:
 
     message = complete(
         client,
-        model=MODEL,
+        model=MODEL_FAST,
         max_tokens=512,
         messages=[{'role': 'user', 'content': prompt}]
     )

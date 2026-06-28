@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-06-28T03:53:43.670286+00:00",
-  "model": "claude-opus-4-8",
+  "generated_at": "2026-06-28T04:25:57.141234+00:00",
+  "model": "claude-sonnet-4-6",
   "summary": {
     "cases": 20,
-    "tp": 20,
-    "fp": 1,
-    "fn": 1,
-    "precision": 0.9523809523809523,
-    "recall": 0.9523809523809523,
-    "f1": 0.9523809523809523,
-    "exact_match": 18,
-    "exact_match_rate": 0.9
+    "tp": 21,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "exact_match": 20,
+    "exact_match_rate": 1.0
   },
   "cases": [
     {
@@ -21,16 +21,15 @@
         "agent-qa-scoring",
         "chat-escalation-handling",
         "chatbot-response-review",
-        "escalated-ticket-triage",
-        "sla-clock-start-rules",
+        "sla-clock-management",
         "ticket-volume-forecasting",
-        "weekly-reporting-rebaseline"
+        "tier-1-query-triage",
+        "weekly-reporting"
       ],
       "predicted": [
         "qa",
         "reporting",
-        "sla",
-        "triage"
+        "sla"
       ],
       "gold": [
         "qa",
@@ -38,12 +37,10 @@
         "sla"
       ],
       "tp": 3,
-      "fp": 1,
+      "fp": 0,
       "fn": 0,
-      "exact_match": false,
-      "false_positives": [
-        "triage"
-      ],
+      "exact_match": true,
+      "false_positives": [],
       "false_negatives": []
     },
     {
@@ -51,11 +48,10 @@
       "summary": "SLA clock start rule changes",
       "hard": false,
       "extracted_tags": [
-        "first-response-tracking",
         "response-time-compliance",
         "sla-breach-review",
-        "sla-clock-calculation",
-        "sla-reporting"
+        "sla-calculation-methodology",
+        "sla-clock-start-time"
       ],
       "predicted": [
         "sla"
@@ -75,13 +71,11 @@
       "summary": "Inbound routing / priority matrix update",
       "hard": false,
       "extracted_tags": [
-        "auto-routing-rules",
-        "inbound-ticket-routing",
-        "p1-escalation",
-        "priority-assignment",
-        "queue-management",
-        "senior-agent-routing",
-        "ticket-intake"
+        "inbound-ticket-triage",
+        "priority-assignment-workflow",
+        "queue-management-rules",
+        "senior-agent-escalation",
+        "ticket-intake-routing"
       ],
       "predicted": [
         "triage"
@@ -102,11 +96,9 @@
       "hard": false,
       "extracted_tags": [
         "agent-qa-scoring",
-        "empathy-scoring",
-        "qa-reviewer-calibration",
-        "qa-scorecard-update",
-        "response-quality-review",
-        "scorecard-rubric-management"
+        "empathy-assessment",
+        "qa-scorecard-updates",
+        "response-quality-review"
       ],
       "predicted": [
         "qa"
@@ -126,11 +118,11 @@
       "summary": "Weekly report adds a metric / trend rule",
       "hard": false,
       "extracted_tags": [
-        "metric-flagging-threshold",
+        "metric-flagging",
         "nps-tracking",
         "report-assembly",
-        "trend-analysis",
-        "weekly-cx-reporting"
+        "trend-analysis-thresholds",
+        "weekly-reporting"
       ],
       "predicted": [
         "reporting"
@@ -151,10 +143,8 @@
       "hard": false,
       "extracted_tags": [
         "badge-access-provisioning",
-        "desk-assignment",
-        "facilities-access-management",
-        "new-employee-badge-issuance",
-        "office-relocation"
+        "desk-assignment-distribution",
+        "office-relocation-coordination"
       ],
       "predicted": [],
       "gold": [],
@@ -170,12 +160,10 @@
       "summary": "HR parental-leave policy (should flag nothing)",
       "hard": false,
       "extracted_tags": [
-        "leave-balance-tracking",
-        "leave-eligibility-verification",
-        "parental-leave-policy",
-        "parental-leave-request",
-        "payroll-leave-processing",
-        "people-ops-handbook-update"
+        "hr-policy-updates",
+        "parental-leave-eligibility",
+        "parental-leave-request-process",
+        "people-ops-handbook-maintenance"
       ],
       "predicted": [],
       "gold": [],
@@ -193,9 +181,8 @@
       "extracted_tags": [
         "balance-reconciliation",
         "billing-provider-migration",
-        "finance-cutover",
-        "invoice-generation",
-        "invoice-numbering"
+        "cutover-weekend-procedures",
+        "invoice-numbering-process"
       ],
       "predicted": [],
       "gold": [],
@@ -211,28 +198,26 @@
       "summary": "New P0 tier affecting both SLA and triage",
       "hard": false,
       "extracted_tags": [
-        "p0-severity-triage",
-        "response-time-tracking",
-        "severity-tier-classification",
+        "intake-tagging",
+        "p0-response-tracking",
+        "severity-classification",
         "sla-breach-review",
-        "sla-target-configuration",
-        "ticket-intake-tagging"
+        "ticket-triage"
       ],
       "predicted": [
-        "sla"
+        "sla",
+        "triage"
       ],
       "gold": [
         "sla",
         "triage"
       ],
-      "tp": 1,
+      "tp": 2,
       "fp": 0,
-      "fn": 1,
-      "exact_match": false,
+      "fn": 0,
+      "exact_match": true,
       "false_positives": [],
-      "false_negatives": [
-        "triage"
-      ]
+      "false_negatives": []
     },
     {
       "id": "qa_into_reporting",
@@ -240,10 +225,10 @@
       "hard": false,
       "extracted_tags": [
         "agent-qa-scoring",
-        "qa-scorecard-process",
+        "qa-scorecard-compilation",
         "quality-metrics-integration",
-        "weekly-cx-reporting",
-        "weekly-report-assembly"
+        "report-assembly",
+        "weekly-reporting"
       ],
       "predicted": [
         "qa",
@@ -265,10 +250,9 @@
       "summary": "SLA breach stats added to weekly report",
       "hard": false,
       "extracted_tags": [
-        "sla-breach-counting",
+        "report-generation",
         "sla-breach-review",
-        "sla-metrics-reporting",
-        "weekly-report-template",
+        "sla-metrics-tracking",
         "weekly-reporting"
       ],
       "predicted": [
@@ -291,12 +275,12 @@
       "summary": "Inbound queue moves to a new tool",
       "hard": false,
       "extracted_tags": [
-        "helpdesk-migration",
-        "inbound-queue-setup",
-        "inbound-routing-rules",
+        "inbound-queue-routing",
+        "inbound-triage-workflow",
         "queue-management",
-        "ticket-assignment-workflow",
-        "ticket-routing-configuration"
+        "queue-prioritization",
+        "routing-rule-configuration",
+        "ticket-assignment-rules"
       ],
       "predicted": [
         "triage"
@@ -316,12 +300,11 @@
       "summary": "QA described as 'conversation audit' (synonym -> likely missed)",
       "hard": true,
       "extracted_tags": [
-        "agent-answer-accuracy-review",
+        "accuracy-review",
         "agent-qa-scoring",
-        "answer-completeness-scoring",
-        "post-resolution-accuracy-audit",
-        "resolved-conversation-audit",
-        "senior-reviewer-qa"
+        "post-resolution-audit",
+        "resolution-verification",
+        "senior-reviewer-workflow"
       ],
       "predicted": [
         "qa"
@@ -341,11 +324,10 @@
       "summary": "Reporting rebaseline described obliquely (likely missed)",
       "hard": true,
       "extracted_tags": [
-        "benchmark-baseline-reset",
-        "channel-mix-analysis",
+        "benchmark-comparison",
+        "channel-shift-tracking",
         "dashboard-annotation",
-        "metric-trend-analysis",
-        "period-over-period-comparison",
+        "prior-period-analysis",
         "weekly-reporting"
       ],
       "predicted": [
@@ -366,10 +348,10 @@
       "summary": "SLA clock pauses while waiting on the customer",
       "hard": false,
       "extracted_tags": [
+        "customer-reply-waiting",
         "sla-breach-review",
         "sla-clock-management",
-        "sla-pause-on-customer-reply",
-        "sla-timer-calculation",
+        "sla-pause-resume",
         "ticket-status-tracking"
       ],
       "predicted": [
@@ -392,10 +374,9 @@
       "extracted_tags": [
         "agent-qa-scoring",
         "monthly-qa-review",
-        "qa-calibration",
-        "qa-rubric-alignment",
-        "qa-scorecard-consistency",
-        "reviewer-calibration"
+        "qa-calibration-sessions",
+        "qa-reviewer-alignment",
+        "scorecard-consistency"
       ],
       "predicted": [
         "qa"
@@ -414,13 +395,7 @@
       "id": "facilities_fire_drill",
       "summary": "Fire drill notice (should flag nothing)",
       "hard": false,
-      "extracted_tags": [
-        "building-assembly-point",
-        "emergency-evacuation-procedure",
-        "fire-drill-evacuation",
-        "quarterly-safety-drill",
-        "stairwell-evacuation-routing"
-      ],
+      "extracted_tags": [],
       "predicted": [],
       "gold": [],
       "tp": 0,
@@ -435,12 +410,11 @@
       "summary": "QA described as listening to call recordings (token-disjoint)",
       "hard": true,
       "extracted_tags": [
-        "agent-feedback",
-        "agent-interaction-grading",
+        "agent-performance-evaluation",
         "agent-qa-scoring",
-        "call-accuracy-review",
         "call-recording-review",
-        "quality-sampling"
+        "conversation-quality-assessment",
+        "team-lead-auditing"
       ],
       "predicted": [
         "qa"
@@ -460,11 +434,9 @@
       "summary": "Reporting described obliquely as 'the numbers for leadership' (token-disjoint)",
       "hard": true,
       "extracted_tags": [
-        "kpi-calculation-methodology",
+        "benchmark-comparison",
+        "data-aggregation-process",
         "leadership-metrics-compilation",
-        "metrics-baseline-comparison",
-        "monday-leadership-report",
-        "reporting-data-aggregation",
         "weekly-reporting"
       ],
       "predicted": [
@@ -485,9 +457,7 @@
       "summary": "Triage described as sorting incoming requests (token-disjoint)",
       "hard": true,
       "extracted_tags": [
-        "priority-assessment",
-        "queue-assignment",
-        "request-intake",
+        "intake-workflow",
         "severity-classification",
         "ticket-routing",
         "ticket-triage"
