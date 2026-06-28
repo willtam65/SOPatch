@@ -1,0 +1,13 @@
+# Render blueprint -- deploys SOPatch as a free public demo.
+# In the Render dashboard: New > Blueprint > point at this repo.
+# Runs in Demo Mode (SOPATCH_DEMO=1), so it needs NO Anthropic/Confluence keys
+# and makes zero external calls -- safe to expose publicly.
+services:
+  - type: web
+    name: sopatch-demo
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: SOPATCH_DEMO
+        value: "1"

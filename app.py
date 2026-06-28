@@ -58,6 +58,12 @@ def index():
     )
 
 
+@app.route('/healthz')
+def healthz():
+    """Liveness probe for the deployment platform (Render/Railway/Docker)."""
+    return jsonify({'status': 'ok', 'demo': env_demo_enabled()})
+
+
 @app.route('/analyze', methods=['POST'])
 def analyze():
     """
@@ -190,5 +196,9 @@ def refine():
 
 
 if __name__ == '__main__':
-    print("SOPatch is running at http://localhost:5001")
-    app.run(debug=True, port=5001)
+    # Local dev server. In production the app is served by gunicorn (see
+    # Dockerfile), which imports `app` directly and ignores this block.
+    port = int(os.environ.get('PORT', 5001))
+    debug = os.environ.get('FLASK_DEBUG', '1') == '1'
+    print(f"SOPatch is running at http://localhost:{port}")
+    app.run(debug=debug, host='0.0.0.0', port=port)
