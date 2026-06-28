@@ -7,10 +7,14 @@ Main entry point. Serves the web UI and handles:
 """
 
 import os
+import anthropic
+import requests
 from flask import Flask, render_template, request, jsonify
+from pydantic import BaseModel, Field, ValidationError
 from core.tagger import run_tagger
 from core.analyzer import analyze_all_sops, refine_section
 from core.confluence import push_to_confluence, get_credentials
+from core.logging import get_logger
 from demo_data import (
     DEMO_ANALYSIS,
     DEMO_BANNER_TEXT,
@@ -19,6 +23,7 @@ from demo_data import (
 )
 
 app = Flask(__name__)
+log = get_logger("sopatch.app")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RELEASE_NOTE_PATH = os.path.join(BASE_DIR, 'data', 'release_note.txt')
@@ -37,6 +42,39 @@ def request_demo_enabled(data):
     never falls back to demo.
     """
     return env_demo_enabled() or bool(data.get('demo'))
+
+
+# ── Request validation ───────────────────────────────────────────────────────
+
+class AnalyzeRequest(BaseModel):
+    release_note: str = Field(min_length=1, max_length=50000)
+
+
+class RefineRequest(BaseModel):
+    user_instruction: str = Field(min_length=1, max_length=2000)
+    release_note: str = Field(default='', max_length=50000)
+    sop_title: str = Field(default='', max_length=500)
+    section_name: str = Field(default='', max_length=500)
+    current_wording: str = Field(default='', max_length=10000)
+    why_outdated: str = Field(default='', max_length=10000)
+    suggested_rewrite: str = Field(default='', max_length=10000)
+
+
+class PushRequest(BaseModel):
+    page_id: str = Field(min_length=1, max_length=100)
+    analysis: str = Field(min_length=1, max_length=100000)
+    title: str = Field(default='SOP', max_length=500)
+
+
+def _error(message, status):
+    return jsonify({'error': message}), status
+
+
+def _validation_error(exc):
+    """Turn a Pydantic ValidationError into a safe 400 (no internals leaked)."""
+    first = exc.errors()[0]
+    field = '.'.join(str(p) for p in first.get('loc', ()))
+    return _error(f"Invalid request: {field} ({first.get('msg', 'invalid')}).", 400)
 
 
 @app.route('/')
@@ -71,16 +109,20 @@ def analyze():
     Load SOPs from Confluence, run AI matching, run Claude analysis.
     Return results as JSON.
     """
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
     # Demo Mode: return the hardcoded result, no tagger / Claude / Confluence.
     if request_demo_enabled(data):
         return jsonify(DEMO_ANALYSIS)
 
-    release_note_text = data.get('release_note', '').strip()
+    try:
+        req = AnalyzeRequest(**data)
+    except ValidationError as e:
+        return _validation_error(e)
 
+    release_note_text = req.release_note.strip()
     if not release_note_text:
-        return jsonify({'error': 'Release note is empty.'}), 400
+        return _error('Release note is empty.', 400)
 
     try:
         # Step 1: Load SOPs from Confluence + AI matching
@@ -113,6 +155,8 @@ def analyze():
                 'sop_content': source_sop['content']
             })
 
+        log.info("analyze.done", affected=len(formatted),
+                 unaffected=len(tagger_result['unaffected_sops']))
         return jsonify({
             'affected_count': len(formatted),
             'unaffected_count': len(tagger_result['unaffected_sops']),
@@ -120,8 +164,15 @@ def analyze():
             'results': formatted
         })
 
+    except anthropic.APIError as e:
+        log.error("analyze.llm_error", error=str(e))
+        return _error('The AI service is temporarily unavailable. Please try again.', 503)
+    except requests.RequestException as e:
+        log.error("analyze.confluence_error", error=str(e))
+        return _error('Could not reach Confluence. Please try again shortly.', 502)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        log.error("analyze.unexpected", error=str(e))
+        return _error('Something went wrong while analyzing. Please try again.', 500)
 
 
 @app.route('/push', methods=['POST'])
@@ -130,7 +181,7 @@ def push():
     Accept an approved SOP update from the UI.
     Push the change log to the correct Confluence page.
     """
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
     # Demo Mode: never touch Confluence; return a success-style demo notice.
     if request_demo_enabled(data):
@@ -141,24 +192,27 @@ def push():
             'message': DEMO_PUSH_MESSAGE,
         })
 
-    page_id = data.get('page_id', '').strip()
-    analysis_text = data.get('analysis', '').strip()
-    sop_title = data.get('title', 'SOP')
-
-    if not page_id or not analysis_text:
-        return jsonify({'error': 'Missing page ID or analysis.'}), 400
+    try:
+        req = PushRequest(**data)
+    except ValidationError as e:
+        return _validation_error(e)
 
     try:
         creds = get_credentials()
-        result = push_to_confluence(page_id, analysis_text, creds)
+        result = push_to_confluence(req.page_id.strip(), req.analysis.strip(), creds)
+        log.info("push.done", page_id=req.page_id.strip(), version=result.get('new_version'))
         return jsonify({
             'success': True,
             'title': result['title'],
             'new_version': result['new_version'],
             'url': result['url']
         })
+    except requests.RequestException as e:
+        log.error("push.confluence_error", error=str(e))
+        return _error('Could not reach Confluence. Please try again shortly.', 502)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        log.error("push.unexpected", error=str(e))
+        return _error('Something went wrong while pushing to Confluence. Please try again.', 500)
 
 
 @app.route('/refine', methods=['POST'])
@@ -167,32 +221,31 @@ def refine():
     Accept a single section + user instruction.
     Return an improved suggested rewrite from Claude.
     """
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
     # Demo Mode: Refine needs a live Claude call, so it is disabled here.
     # The frontend hides the button in demo; this is a backend safety guard.
     if request_demo_enabled(data):
-        return jsonify({'error': DEMO_REFINE_MESSAGE}), 400
+        return _error(DEMO_REFINE_MESSAGE, 400)
 
-    release_note_text = data.get('release_note', '').strip()
-    sop_title = data.get('sop_title', '').strip()
-    section_name = data.get('section_name', '').strip()
-    current_wording = data.get('current_wording', '').strip()
-    why_outdated = data.get('why_outdated', '').strip()
-    suggested_rewrite = data.get('suggested_rewrite', '').strip()
-    user_instruction = data.get('user_instruction', '').strip()
-
-    if not user_instruction:
-        return jsonify({'error': 'Please enter a refinement instruction.'}), 400
+    try:
+        req = RefineRequest(**data)
+    except ValidationError as e:
+        return _validation_error(e)
 
     try:
         new_rewrite = refine_section(
-            release_note_text, sop_title, section_name,
-            current_wording, why_outdated, suggested_rewrite, user_instruction
+            req.release_note.strip(), req.sop_title.strip(), req.section_name.strip(),
+            req.current_wording.strip(), req.why_outdated.strip(),
+            req.suggested_rewrite.strip(), req.user_instruction.strip()
         )
         return jsonify({'rewrite': new_rewrite})
+    except anthropic.APIError as e:
+        log.error("refine.llm_error", error=str(e))
+        return _error('The AI service is temporarily unavailable. Please try again.', 503)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        log.error("refine.unexpected", error=str(e))
+        return _error('Something went wrong while refining. Please try again.', 500)
 
 
 if __name__ == '__main__':
