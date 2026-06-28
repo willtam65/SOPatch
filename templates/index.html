@@ -133,16 +133,8 @@
     }
   }
 
-  // Minutes saved per flagged section (manual cross-check + rewrite time).
-  const MINUTES_PER_SECTION = 15;
-
-  // Format a minute count as "~45 min" or "~1h 15m".
-  function formatTimeSaved(totalMinutes) {
-    if (totalMinutes < 60) return `~${totalMinutes} min`;
-    const hours = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
-    return mins === 0 ? `~${hours}h` : `~${hours}h ${mins}m`;
-  }
+  // The "review time saved" metric was removed: it read as marketing ROI, not
+  // an operational signal a real product shows on its working view.
 
   // Render the Impact Summary Card above the flagged-SOPs bar.
   // Computes entirely from the /analyze payload -- no backend call.
@@ -158,13 +150,10 @@
     const sectionsFlagged = (data.results || []).reduce(
       (sum, r) => sum + parseAnalysisBlocks(r.analysis || '').length, 0
     );
-    const timeSaved = formatTimeSaved(sectionsFlagged * MINUTES_PER_SECTION);
-
     const metrics = [
       { value: data.affected_count, label: 'SOPs affected' },
       { value: sectionsFlagged, label: 'Sections flagged' },
-      { value: '100%', label: 'Grounded' },
-      { value: timeSaved, label: 'Est. review time saved' }
+      { value: '100%', label: 'Grounded' }
     ];
 
     card.style.display = 'block';
@@ -177,9 +166,6 @@
             <div class="impact-label">${escapeHtml(m.label)}</div>
           </div>
         `).join('')}
-      </div>
-      <div class="impact-context">
-        Based on ~${MINUTES_PER_SECTION} min of manual cross-checking and rewriting per flagged section.
       </div>
     `;
   }
