@@ -1,9 +1,10 @@
-<img width="1470" height="833" alt="Screenshot 2026-06-14 at 2 48 50 PM" src="https://github.com/user-attachments/assets/9e6ddb37-87d8-4446-8b6e-2d9ef4bcbd03" />
 # SOPatch
 
 AI-powered SOP update detection. Paste a release note, get flagged sections and suggested rewrites, push directly to Confluence.
 
 [![CI](https://github.com/willtam65/SOPatch/actions/workflows/ci.yml/badge.svg)](https://github.com/willtam65/SOPatch/actions/workflows/ci.yml) ![version](https://img.shields.io/badge/version-0.2-blue) ![Python](https://img.shields.io/badge/python-3.12-green) ![evals](https://img.shields.io/badge/tagger%20eval-20%20cases-informational)
+
+![SOPatch demo: paste a release note, get flagged SOP sections with grounded, review-ready rewrites](docs/demo.png)
 
 ## What it does
 
