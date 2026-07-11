@@ -530,3 +530,79 @@ input:focus-visible, [contenteditable="true"]:focus-visible {
   --warn-bg: #2a2412; --warn-text: #dcb05f; --warn-border: #463c1c;
   --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.25);
 }
+
+/* ── Automated monitoring (auto-trigger demo) ── */
+.automation-card { border-top: 3px solid var(--accent); }
+.auto-head {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 12px;
+}
+.auto-head > i { font-size: 18px; color: var(--accent); }
+.auto-live {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 500; color: var(--text-2);
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px 9px;
+}
+.pulse-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+@keyframes pulse-dot { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.7); } }
+.src-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); display: inline-block; }
+.auto-sources { display: flex; gap: 8px; margin-bottom: 12px; }
+.source-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-2);
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 7px; padding: 5px 10px;
+}
+.source-chip > i { font-size: 14px; color: var(--text-3); }
+.auto-status {
+  font-size: 12px; line-height: 1.5; color: var(--text-2);
+  min-height: 34px; margin-bottom: 12px;
+}
+.auto-status i { vertical-align: -2px; }
+.auto-status strong { color: var(--text); }
+
+.or-divider {
+  display: flex; align-items: center; gap: 10px;
+  margin: 2px 0 14px; color: var(--text-3); font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.or-divider::before, .or-divider::after {
+  content: ""; flex: 1; height: 1px; background: var(--border);
+}
+
+/* ── Auto-run banner + Slack notification ── */
+.auto-run-banner { display: none; margin-bottom: 16px; }
+.auto-run-line {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; color: var(--text); font-weight: 500; margin-bottom: 10px;
+}
+.auto-run-line i { color: var(--accent); font-size: 16px; }
+
+.slack-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 12px 14px; box-shadow: var(--shadow);
+}
+.slack-head {
+  font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 9px;
+  display: flex; align-items: center; gap: 3px;
+}
+.slack-hash { color: var(--text-3); }
+.slack-msg { display: flex; gap: 10px; }
+.slack-bot {
+  flex: 0 0 30px; height: 30px; border-radius: 7px;
+  background: var(--brand); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.slack-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.slack-app {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.3px;
+  background: var(--surface-2); color: var(--text-3);
+  border-radius: 3px; padding: 1px 4px; vertical-align: 1px;
+}
+.slack-time { font-size: 11px; font-weight: 400; color: var(--text-3); }
+.slack-text { font-size: 13px; line-height: 1.55; color: var(--text-2); }
+.slack-text strong { color: var(--text); }

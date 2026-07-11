@@ -49,6 +49,25 @@
 
   <!-- Left Panel: Input -->
   <div class="left-panel">
+    {% if demo_mode %}
+    <div class="card automation-card">
+      <div class="auto-head">
+        <i class="ti ti-radar-2" aria-hidden="true"></i>
+        <span>Automated monitoring</span>
+        <span class="auto-live" id="auto-live"><span class="pulse-dot"></span>Watching</span>
+      </div>
+      <div class="auto-sources">
+        <span class="source-chip"><i class="ti ti-ticket" aria-hidden="true"></i>Jira<span class="src-dot"></span></span>
+        <span class="source-chip"><i class="ti ti-book-2" aria-hidden="true"></i>Confluence<span class="src-dot"></span></span>
+      </div>
+      <div class="auto-status" id="auto-status">Watching Jira for new releases. In the live app SOPatch runs on its own the moment a release ships. Click to simulate one.</div>
+      <button class="btn-analyze" id="btn-simulate" onclick="simulateJiraRelease()">
+        <i class="ti ti-player-play" style="font-size:16px" aria-hidden="true"></i><span>Simulate a Jira release</span>
+      </button>
+    </div>
+    <div class="or-divider"><span>or run a note manually</span></div>
+    {% endif %}
+
     <div class="card input-card">
       <div class="panel-label">Release note or policy change</div>
       <textarea
@@ -85,6 +104,7 @@
 
   <!-- Right Panel: Results -->
   <div class="right-panel">
+    <div class="auto-run-banner" id="auto-run-banner"></div>
     <div class="impact-card" id="impact-card"></div>
     <div class="summary-bar" id="summary-bar"></div>
     <div id="results-container">
@@ -106,6 +126,7 @@
   // Store analysis results globally so push buttons can access them by index
   let analysisResults = [];
   let currentReleaseNote = '';
+  let autoTriggered = false;
 
   // ── Theme toggle (overrides the system preference, remembered in localStorage) ──
   function syncThemeIcon() {
@@ -120,7 +141,39 @@
   }
   syncThemeIcon();
 
-  async function runAnalysis() {
+  // ── Automated monitoring demo: SOPatch watches Jira and runs on its own ──
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function setAutoStatus(stage) {
+    const status = document.getElementById('auto-status');
+    const live = document.getElementById('auto-live');
+    const btn = document.getElementById('btn-simulate');
+    if (!status) return;
+    if (stage === 'detected') {
+      status.innerHTML = '<i class="ti ti-ticket" aria-hidden="true"></i> New release detected in Jira: <strong>Stealth Company v3.1</strong>';
+      if (live) live.innerHTML = '<span class="pulse-dot"></span>Triggered';
+    } else if (stage === 'analyzing') {
+      status.innerHTML = '<span class="spinner" style="width:13px;height:13px;display:inline-block;vertical-align:-2px"></span> SOPatch is analyzing the release automatically';
+    } else if (stage === 'notified') {
+      status.innerHTML = '<i class="ti ti-circle-check" style="color:var(--success)" aria-hidden="true"></i> Analyzed and grounded. Reviewer notified in <strong>#cx-ops</strong>.';
+      if (live) live.innerHTML = '<span class="src-dot"></span>Done';
+      if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Simulate again'; }
+    }
+  }
+
+  async function simulateJiraRelease() {
+    const btn = document.getElementById('btn-simulate');
+    if (btn) btn.disabled = true;
+    setAutoStatus('detected');
+    await sleep(950);
+    setAutoStatus('analyzing');
+    await sleep(450);
+    await runAnalysis(true);
+    setAutoStatus('notified');
+  }
+
+  async function runAnalysis(isAuto = false) {
+    autoTriggered = isAuto;
     const releaseNote = document.getElementById('release-note').value.trim();
     currentReleaseNote = releaseNote;
     if (!releaseNote) {
@@ -199,6 +252,29 @@
   function renderResults(data) {
     const summaryBar = document.getElementById('summary-bar');
     const container = document.getElementById('results-container');
+
+    const autoBanner = document.getElementById('auto-run-banner');
+    if (autoBanner) {
+      if (autoTriggered) {
+        const sectionsCount = (data.results || []).reduce((s, r) => s + parseAnalysisBlocks(r.analysis || '').length, 0);
+        autoBanner.style.display = 'block';
+        autoBanner.innerHTML = `
+          <div class="auto-run-line"><i class="ti ti-bolt" aria-hidden="true"></i> Auto-triggered by a Jira release &middot; <strong>Stealth Company v3.1</strong></div>
+          <div class="slack-card">
+            <div class="slack-head"><span class="slack-hash">#</span>cx-ops</div>
+            <div class="slack-msg">
+              <div class="slack-bot"><i class="ti ti-file-diff" aria-hidden="true"></i></div>
+              <div>
+                <div class="slack-name">SOPatch <span class="slack-app">APP</span> <span class="slack-time">just now</span></div>
+                <div class="slack-text">Release <strong>v3.1</strong> made <strong>${data.affected_count} SOP${data.affected_count !== 1 ? 's' : ''}</strong> stale (${sectionsCount} section${sectionsCount !== 1 ? 's' : ''}). Every edit is grounded in the source. Ready for review.</div>
+              </div>
+            </div>
+          </div>`;
+      } else {
+        autoBanner.style.display = 'none';
+        autoBanner.innerHTML = '';
+      }
+    }
 
     // Impact summary card (only when there are flagged SOPs)
     renderImpactCard(data);
@@ -706,6 +782,8 @@
   function showSkeleton() {
     document.getElementById('impact-card').style.display = 'none';
     document.getElementById('summary-bar').style.display = 'none';
+    const ab = document.getElementById('auto-run-banner');
+    if (ab) ab.style.display = 'none';
     const sk = `<div class="skeleton-card"><div class="sk-line lg" style="width:42%;margin-bottom:14px"></div><div class="sk-line" style="width:92%;margin-bottom:9px"></div><div class="sk-line" style="width:78%;margin-bottom:9px"></div><div class="sk-line" style="width:86%"></div></div>`;
     document.getElementById('results-container').innerHTML = `<div class="skeleton-wrap">${sk}${sk}${sk}</div>`;
   }
@@ -716,6 +794,8 @@
     document.getElementById('summary-bar').innerHTML = '';
     document.getElementById('impact-card').style.display = 'none';
     document.getElementById('impact-card').innerHTML = '';
+    const ab = document.getElementById('auto-run-banner');
+    if (ab) { ab.style.display = 'none'; ab.innerHTML = ''; }
   }
 
   function showError(msg) {
