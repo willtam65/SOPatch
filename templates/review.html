@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Review {{ run.source }} &middot; SOPatch</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=DM+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.3.0/dist/tabler-icons.min.css"/>
+  <link rel="stylesheet" href="/static/style.css"/>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sopatch-theme');
+        if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    /* The app shell locks body scrolling; review pages are documents, so scroll. */
+    body { overflow: auto !important; }
+    .review-wrap { max-width: 860px; margin: 0 auto; padding: 28px 24px 80px; }
+    .crumb { font-size: 13px; color: var(--text-3); margin-bottom: 16px; }
+    .crumb a { color: var(--text-2); text-decoration: none; }
+    .crumb a:hover { color: var(--text); }
+    .review-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 4px; }
+    .review-title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+    .review-sub { font-size: 13px; color: var(--text-2); margin-bottom: 20px; }
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px; padding: 3px 11px;
+      border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
+      border: 1px solid transparent;
+    }
+    .status-pending  { background: var(--warn-bg);    color: var(--warn-text);    border-color: var(--warn-border); }
+    .status-approved { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+    .status-rejected { background: var(--danger-bg);  color: var(--danger-text);  border-color: var(--danger-border); }
+    .change-note {
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r);
+      padding: 14px 16px; font-size: 13px; line-height: 1.6; color: var(--text);
+      white-space: pre-wrap; margin-bottom: 24px;
+    }
+    .section-label {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--text-3); margin: 26px 0 12px;
+    }
+    .sop-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+      box-shadow: var(--shadow); padding: 18px 20px; margin-bottom: 16px;
+    }
+    .sop-title { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+    .tag {
+      font-family: var(--mono); font-size: 11px; color: var(--text-2);
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px; padding: 1px 7px;
+    }
+    .edit { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px; }
+    .edit-name { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .edit-why { font-size: 12.5px; color: var(--text-2); line-height: 1.6; margin-bottom: 10px; }
+    .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 640px) { .ba { grid-template-columns: 1fr; } }
+    .ba-col { border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+    .ba-head { font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
+               padding: 6px 10px; color: var(--text-3); background: var(--surface-2); }
+    .ba-body { padding: 10px; font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; }
+    .ba-before .ba-body { color: var(--text-2); }
+    .ba-after  { border-color: var(--success-border); }
+    .ba-after .ba-head { background: var(--success-bg); color: var(--success-text); }
+    .decision-bar {
+      position: sticky; bottom: 0; margin-top: 28px; padding: 16px 0 4px;
+      background: linear-gradient(to top, var(--bg) 70%, transparent);
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border-strong);
+      background: var(--surface); color: var(--text); font-weight: 600; font-size: 13px;
+      padding: 9px 16px; border-radius: var(--r); cursor: pointer; font-family: inherit;
+    }
+    .btn:hover { background: var(--surface-2); }
+    .btn-approve { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .btn-approve:hover { background: var(--brand-700); }
+    .btn-reject:hover { color: var(--danger-text); border-color: var(--danger-border); background: var(--danger-bg); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .decided-note { font-size: 13px; color: var(--text-2); }
+    .grounded { font-size: 12px; color: var(--success-text); display: inline-flex; align-items: center; gap: 5px; }
+    .audit { margin-top: 34px; }
+    .audit ul { list-style: none; }
+    .audit li { display: flex; gap: 10px; font-size: 12.5px; padding: 6px 0; color: var(--text-2); }
+    .audit .ev { font-weight: 600; color: var(--text); min-width: 78px; text-transform: capitalize; }
+    .audit .ts { font-family: var(--mono); color: var(--text-3); white-space: nowrap; }
+    .empty-note { color: var(--text-2); font-size: 13px; padding: 8px 0; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand-lockup">
+    <div class="brand-mark"><i class="ti ti-file-diff" aria-hidden="true"></i></div>
+    <span class="brand-name">SOPatch</span>
+  </div>
+  <span class="header-divider"></span>
+  <span class="workspace-pill"><i class="ti ti-inbox" style="font-size:13px" aria-hidden="true"></i>Review queue</span>
+  <div class="header-right">
+    <nav class="header-nav">
+      <a href="/reviews">All reviews</a>
+      <a href="/">App</a>
+    </nav>
+    <button class="icon-btn" id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><i class="ti ti-moon" aria-hidden="true"></i></button>
+    <span class="avatar">WT</span>
+  </div>
+</div>
+
+{% if demo_mode %}
+<div class="demo-banner">DEMO MODE: sample data, no live Confluence connection</div>
+{% endif %}
+
+<div class="review-wrap">
+  <div class="crumb"><a href="/reviews">Review queue</a> / Review #{{ run.id }}</div>
+
+  <div class="review-head">
+    <div class="review-title" style="flex:1">{{ run.source }}</div>
+    {% set s = run.status %}
+    <span class="status-badge status-{{ s }}">
+      <i class="ti {{ 'ti-clock' if s == 'pending' else ('ti-circle-check' if s == 'approved' else 'ti-circle-x') }}" aria-hidden="true"></i>
+      {{ s }}
+    </span>
+  </div>
+  <div class="review-sub">
+    Flagged {{ run.affected_count }} SOP{{ '' if run.affected_count == 1 else 's' }}
+    &middot; detected {{ run.created_at }}
+    {% if run.decided_at %} &middot; {{ run.status }} by {{ run.approver }} at {{ run.decided_at }}{% endif %}
+  </div>
+
+  <div class="section-label">Change that triggered this</div>
+  <div class="change-note">{{ run.change_note }}</div>
+
+  <div class="section-label">Flagged SOPs and drafted edits</div>
+  {% if not flagged %}
+  <div class="empty-note">No SOPs were affected by this change.</div>
+  {% endif %}
+  {% for sop in flagged %}
+  <div class="sop-card">
+    <div class="sop-title"><i class="ti ti-file-text" aria-hidden="true"></i>{{ sop.title }}</div>
+    {% if sop.matching_tags %}
+    <div class="tag-row">{% for t in sop.matching_tags %}<span class="tag">{{ t }}</span>{% endfor %}</div>
+    {% endif %}
+    {% for sec in sop.sections %}
+    <div class="edit">
+      <div class="edit-name">{{ sec.section }}</div>
+      {% if sec.why_outdated %}<div class="edit-why">{{ sec.why_outdated }}</div>{% endif %}
+      <div class="ba">
+        <div class="ba-col ba-before">
+          <div class="ba-head">Current</div>
+          <div class="ba-body">{{ sec.current_wording or '(no current wording quoted)' }}</div>
+        </div>
+        <div class="ba-col ba-after">
+          <div class="ba-head">Suggested</div>
+          <div class="ba-body">{{ sec.suggested_rewrite }}</div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+  {% if flagged %}
+  <div style="margin-top:16px"><span class="grounded"><i class="ti ti-shield-check" aria-hidden="true"></i>Every suggested edit passed the grounding guard: its quoted current wording exists in the source SOP.</span></div>
+  {% endif %}
+
+  <div class="decision-bar" id="decision-bar">
+    {% if run.status == 'pending' %}
+    <button class="btn btn-approve" id="btn-approve" onclick="decide('approved')"><i class="ti ti-check" aria-hidden="true"></i>Approve edits</button>
+    <button class="btn btn-reject" id="btn-reject" onclick="decide('rejected')"><i class="ti ti-x" aria-hidden="true"></i>Reject</button>
+    <span class="decided-note" id="decide-hint">{% if demo_mode %}Demo: your decision is recorded and audited; nothing is pushed to Confluence.{% else %}Approving records the decision. The live push to Confluence is the next step.{% endif %}</span>
+    {% else %}
+    <span class="decided-note"><i class="ti {{ 'ti-circle-check' if run.status == 'approved' else 'ti-circle-x' }}" aria-hidden="true"></i> {{ run.status | capitalize }} by {{ run.approver }} at {{ run.decided_at }}.</span>
+    {% endif %}
+  </div>
+
+  <div class="audit">
+    <div class="section-label" style="margin-top:0">Audit trail</div>
+    <ul id="audit-list">
+      {% for e in run.audit %}
+      <li><span class="ts">{{ e.at }}</span> <span class="ev">{{ e.event }}</span> <span>{{ e.detail }}{% if e.actor and e.actor != 'system' %} &middot; {{ e.actor }}{% endif %}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<script>
+  function syncThemeIcon() {
+    const icon = document.querySelector('#theme-toggle i');
+    if (icon) icon.className = document.documentElement.dataset.theme === 'dark' ? 'ti ti-sun' : 'ti ti-moon';
+  }
+  function toggleTheme() {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('sopatch-theme', next); } catch (e) {}
+    syncThemeIcon();
+  }
+  syncThemeIcon();
+
+  const RUN_ID = {{ run.id }};
+  async function decide(decision) {
+    const approve = document.getElementById('btn-approve');
+    const reject = document.getElementById('btn-reject');
+    if (approve) approve.disabled = true;
+    if (reject) reject.disabled = true;
+    try {
+      const res = await fetch(`/review/${RUN_ID}/decision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, approver: 'Will Tam' }),
+      });
+      if (!res.ok) throw new Error('request failed');
+      const data = await res.json();
+      const cls = data.status === 'approved' ? 'approved' : 'rejected';
+      const badge = document.querySelector('.status-badge');
+      if (badge) {
+        badge.className = 'status-badge status-' + cls;
+        badge.innerHTML = `<i class="ti ${cls === 'approved' ? 'ti-circle-check' : 'ti-circle-x'}"></i> ${data.status}`;
+      }
+      document.getElementById('decision-bar').innerHTML =
+        `<span class="decided-note"><i class="ti ${cls === 'approved' ? 'ti-circle-check' : 'ti-circle-x'}"></i> ${data.status[0].toUpperCase()+data.status.slice(1)} by ${data.approver} at ${data.decided_at}.</span>`;
+      const ul = document.getElementById('audit-list');
+      if (ul) {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="ts">${data.decided_at}</span> <span class="ev">${data.status}</span> <span>&middot; ${data.approver}</span>`;
+        ul.appendChild(li);
+      }
+    } catch (e) {
+      if (approve) approve.disabled = false;
+      if (reject) reject.disabled = false;
+      const hint = document.getElementById('decide-hint');
+      if (hint) hint.textContent = 'Could not record the decision. Please try again.';
+    }
+  }
+</script>
+</body>
+</html>

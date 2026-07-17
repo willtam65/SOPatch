@@ -25,20 +25,25 @@ ship only once design partners have shown the problem is worth paying to solve.
   released version or a labelled policy/process issue, parses the change note
   (including Jira Cloud's ADF format), and notifies a reviewer. This is the first
   step of removing the manual trigger: SOPatch can now start itself.
+- A review queue and audit trail. Each run is persisted (SQLite), the reviewer
+  notification links to a `/review/<id>` page with the flagged SOPs and a
+  before/after of every drafted edit, and Approve or Reject is one click,
+  attributed to the reviewer with a timestamp. Every step is written to an
+  append-only audit trail, traceable from the Jira source to the approval.
 
 ## Next: finish making it run itself
 
-The webhook is in; a human no longer has to remember to paste the note. What
-remains is turning that trigger into a productionised loop.
+The webhook is in and a human no longer has to remember to paste the note; the
+run is recorded and approved through the review queue. What remains is wiring the
+trigger to live services and making it multi-tenant.
 
-- **Complete the automated trigger.** Deliver the notification to real Slack or
-  email (it logs today when unconfigured), connect a live Jira via OAuth rather
-  than an unauthenticated webhook, and add a review link so approval is one click.
+- **Deliver and connect for real.** Send the notification to real Slack or email
+  (it logs today when unconfigured), connect a live Jira via OAuth rather than an
+  unauthenticated webhook, and push the approved edits to Confluence on approval
+  (approval is recorded today; the push is still the manual step from the app).
 - **The foundation that trigger needs.** Real login (SSO), a workspace model so
-  one customer's SOPs and credentials are isolated, per-tenant encrypted secrets
-  in place of the single shared credential, and a database for run history.
-- **Audit trail.** Every change traceable from the Jira ticket to the SOP edit
-  to the Confluence push, attributed to the person who approved it.
+  one customer's SOPs and credentials are isolated, and per-tenant encrypted
+  secrets in place of the single shared credential.
 
 The distribution channel for this phase is an Atlassian Marketplace (Forge) app,
 where the buyers with intent already are.

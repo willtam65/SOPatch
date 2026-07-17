@@ -11,13 +11,15 @@ Main entry point. Serves the web UI and handles:
 import os
 import anthropic
 import requests
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, url_for
 from pydantic import BaseModel, Field, ValidationError
 from core.tagger import run_tagger
 from core.analyzer import analyze_all_sops, refine_section
 from core.confluence import push_to_confluence, get_credentials
 from core.jira import should_trigger, extract_change_note, source_label
 from core.notify import format_review_notification, send_notification
+from core.sections import parse_sections
+from core.store import ReviewStore
 from core.logging import get_logger
 from demo_data import (
     DEMO_ANALYSIS,
@@ -31,6 +33,10 @@ log = get_logger("sopatch.app")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RELEASE_NOTE_PATH = os.path.join(BASE_DIR, 'data', 'release_note.txt')
+
+# Persisted review queue + audit trail. Path is SOPATCH_DB (see core/store.py);
+# tests point it at a temp file, and the demo writes to data/sopatch.db.
+store = ReviewStore()
 
 
 def env_demo_enabled():
@@ -68,6 +74,11 @@ class PushRequest(BaseModel):
     page_id: str = Field(min_length=1, max_length=100)
     analysis: str = Field(min_length=1, max_length=100000)
     title: str = Field(default='SOP', max_length=500)
+
+
+class DecisionRequest(BaseModel):
+    decision: str = Field(pattern='^(approved|rejected)$')
+    approver: str = Field(default='reviewer', max_length=200)
 
 
 def _error(message, status):
@@ -285,12 +296,19 @@ def jira_webhook():
         log.error("jira_webhook.unexpected", error=str(e))
         return _error('Something went wrong handling the event.', 500)
 
-    message = format_review_notification(source, result)
+    # Record the run so a reviewer can open it, decide, and leave an audit trail.
+    run_id = store.create_run(source, change_note, result)
+    review_url = url_for('review_page', run_id=run_id, _external=True)
+
+    message = format_review_notification(source, result, review_url=review_url)
     delivery = send_notification(message)
-    log.info("jira_webhook.triggered", source=source,
+    store.record_event(run_id, 'notified', actor='system', detail=delivery['channel'])
+    log.info("jira_webhook.triggered", run_id=run_id, source=source,
              affected=result.get('affected_count'), channel=delivery['channel'])
     return jsonify({
         'triggered': True,
+        'run_id': run_id,
+        'review_url': review_url,
         'source': source,
         'change_note_preview': change_note[:280],
         'affected_count': result.get('affected_count', 0),
@@ -299,6 +317,49 @@ def jira_webhook():
             'channel': delivery['channel'],
             'message': message,
         },
+    })
+
+
+@app.route('/reviews')
+def reviews_list():
+    """The review queue: every automated run, newest first, with its status."""
+    return render_template('reviews.html', runs=store.list_runs(),
+                           demo_mode=env_demo_enabled())
+
+
+@app.route('/review/<int:run_id>')
+def review_page(run_id):
+    """One run's flagged SOPs, before/after edits, decision controls, audit trail."""
+    run = store.get_run(run_id)
+    if run is None:
+        return render_template('reviews.html', runs=store.list_runs(),
+                               demo_mode=env_demo_enabled(), not_found_id=run_id), 404
+    # Attach parsed sections per flagged SOP for server-side rendering.
+    flagged = []
+    for r in run['result'].get('results', []):
+        flagged.append({**r, 'sections': parse_sections(r.get('analysis', ''))})
+    return render_template('review.html', run=run, flagged=flagged,
+                           demo_mode=env_demo_enabled())
+
+
+@app.route('/review/<int:run_id>/decision', methods=['POST'])
+def review_decision(run_id):
+    """Record an approve/reject decision on a run and append an audit event."""
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    try:
+        req = DecisionRequest(**data)
+    except ValidationError as e:
+        return _validation_error(e)
+
+    updated = store.set_decision(run_id, req.decision, actor=req.approver.strip() or 'reviewer')
+    if updated is None:
+        return _error('Review not found.', 404)
+    log.info("review.decision", run_id=run_id, decision=req.decision, approver=req.approver)
+    return jsonify({
+        'run_id': run_id,
+        'status': updated['status'],
+        'decided_at': updated['decided_at'],
+        'approver': updated['approver'],
     })
 
 

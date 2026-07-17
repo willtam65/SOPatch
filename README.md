@@ -134,6 +134,28 @@ Set `JIRA_WEBHOOK_SECRET` to require a matching `X-Webhook-Secret` header. The
 next step (see [ROADMAP.md](ROADMAP.md)) is a live Jira OAuth connection and real
 Slack/email delivery.
 
+## Review queue and audit trail
+
+The webhook notification is not a dead end. Each run is recorded, and the
+notification links straight to a review page (`/review/<id>`) that shows the
+change that triggered it, every flagged SOP with a before/after of each drafted
+edit, and Approve / Reject controls. Approving or rejecting is one click and is
+attributed to the reviewer with a timestamp.
+
+Every step is written to an append-only audit trail, so a change is traceable
+end to end: the Jira source, the SOPs it flagged, and who approved it and when.
+The queue at `/reviews` lists every run and its status. It is backed by SQLite
+from the standard library, so there is no extra dependency and the demo needs no
+database to run.
+
+```bash
+SOPATCH_DEMO=1 python3 app.py &
+curl -sX POST http://localhost:5001/webhook/jira \
+  -H 'Content-Type: application/json' -d @data/sample_jira_webhook.json
+# The response includes a review_url. Open it, or browse the queue:
+open http://localhost:5001/reviews
+```
+
 ## Deploy
 
 The public demo runs in Demo Mode (no keys, no external calls), so it's safe to

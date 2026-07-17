@@ -7,3 +7,5 @@ output/
 *.log
 .pytest_cache/
 .claude/
+data/sopatch.db
+*.sqlite3
