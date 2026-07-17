@@ -135,6 +135,22 @@ input:focus-visible, [contenteditable="true"]:focus-visible {
 }
 .icon-btn:hover { background: var(--surface-2); color: var(--text); }
 
+/* Brand lockup doubles as the home link on every page. */
+.brand-link { text-decoration: none; }
+.brand-link:hover .brand-name { color: var(--accent); }
+
+/* ── Primary nav tabs (Dashboard / Review queue), shared across pages ── */
+.nav-tabs { display: flex; align-items: center; gap: 4px; }
+.nav-tab {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 500; color: var(--text-2);
+  text-decoration: none; padding: 6px 11px; border-radius: 7px;
+  border: 1px solid transparent; transition: background 0.15s, color 0.15s;
+}
+.nav-tab i { font-size: 15px; }
+.nav-tab:hover { background: var(--surface-2); color: var(--text); }
+.nav-tab.active { background: var(--accent-bg); color: var(--accent); border-color: var(--border); }
+
 /* ── Demo banner ── */
 .demo-banner {
   background: var(--warn-bg);

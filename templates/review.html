@@ -94,16 +94,18 @@
 <body>
 
 <div class="header">
-  <div class="brand-lockup">
+  <a href="/" class="brand-lockup brand-link" title="SOPatch home" aria-label="SOPatch home">
     <div class="brand-mark"><i class="ti ti-file-diff" aria-hidden="true"></i></div>
     <span class="brand-name">SOPatch</span>
-  </div>
+  </a>
   <span class="header-divider"></span>
-  <span class="workspace-pill"><i class="ti ti-inbox" style="font-size:13px" aria-hidden="true"></i>Review queue</span>
+  <nav class="nav-tabs">
+    <a href="/" class="nav-tab"><i class="ti ti-layout-dashboard" aria-hidden="true"></i>Dashboard</a>
+    <a href="/reviews" class="nav-tab active"><i class="ti ti-inbox" aria-hidden="true"></i>Review queue</a>
+  </nav>
   <div class="header-right">
     <nav class="header-nav">
-      <a href="/reviews">All reviews</a>
-      <a href="/">App</a>
+      <a href="https://github.com/willtam65/SOPatch" target="_blank" rel="noopener">GitHub</a>
     </nav>
     <button class="icon-btn" id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><i class="ti ti-moon" aria-hidden="true"></i></button>
     <span class="avatar">WT</span>
