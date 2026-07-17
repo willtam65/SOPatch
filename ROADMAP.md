@@ -21,18 +21,19 @@ ship only once design partners have shown the problem is worth paying to solve.
   off by default after measuring the tradeoff.
 - Cost-tiered models (cheap classification on a small model, analysis on a
   stronger one), a credential-free demo mode, and CI.
+- A Jira webhook trigger (`POST /webhook/jira`) that runs the pipeline on a
+  released version or a labelled policy/process issue, parses the change note
+  (including Jira Cloud's ADF format), and notifies a reviewer. This is the first
+  step of removing the manual trigger: SOPatch can now start itself.
 
-## Next: make it run itself
+## Next: finish making it run itself
 
-The single most valuable next step is removing the manual trigger. Today a human
-has to remember to paste the release note, which is the one thing the tool
-exists to stop them forgetting.
+The webhook is in; a human no longer has to remember to paste the note. What
+remains is turning that trigger into a productionised loop.
 
-- **Automated trigger via Jira.** Watch for a released version or a ticket
-  labelled as a policy or process change, run the analysis automatically, and
-  notify a reviewer in Slack or email with a link to approve. Jira is where the
-  change is born and Confluence is where the docs live, so connecting both
-  closes the loop inside one Atlassian workspace and one OAuth.
+- **Complete the automated trigger.** Deliver the notification to real Slack or
+  email (it logs today when unconfigured), connect a live Jira via OAuth rather
+  than an unauthenticated webhook, and add a review link so approval is one click.
 - **The foundation that trigger needs.** Real login (SSO), a workspace model so
   one customer's SOPs and credentials are isolated, per-tenant encrypted secrets
   in place of the single shared credential, and a database for run history.

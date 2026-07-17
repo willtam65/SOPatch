@@ -4,6 +4,8 @@ app.py -- SOPatch Web Application
 Main entry point. Serves the web UI and handles:
 - POST /analyze: loads SOPs from Confluence, runs AI matching + analysis
 - POST /push: pushes approved SOP update back to the correct Confluence page
+- POST /webhook/jira: automated trigger; runs the pipeline on a Jira change and
+  notifies a reviewer, instead of waiting for a human to paste a release note
 """
 
 import os
@@ -14,6 +16,8 @@ from pydantic import BaseModel, Field, ValidationError
 from core.tagger import run_tagger
 from core.analyzer import analyze_all_sops, refine_section
 from core.confluence import push_to_confluence, get_credentials
+from core.jira import should_trigger, extract_change_note, source_label
+from core.notify import format_review_notification, send_notification
 from core.logging import get_logger
 from demo_data import (
     DEMO_ANALYSIS,
@@ -77,6 +81,41 @@ def _validation_error(exc):
     return _error(f"Invalid request: {field} ({first.get('msg', 'invalid')}).", 400)
 
 
+def _analyze_release_note(release_note_text):
+    """Run the tagger + analyzer for a release note and return the result payload.
+    Shared by POST /analyze and the Jira webhook. Raises on model/Confluence errors."""
+    tagger_result = run_tagger(release_note_text)
+    if not tagger_result['affected_sops']:
+        return {
+            'affected_count': 0,
+            'unaffected_count': len(tagger_result['unaffected_sops']),
+            'unaffected_sops': tagger_result['unaffected_sops'],
+            'results': [],
+            'message': 'No SOPs were affected by this release note.'
+        }
+    results = analyze_all_sops(release_note_text, tagger_result['affected_sops'])
+    formatted = []
+    for r in results:
+        source_sop = next(
+            sop for sop in tagger_result['affected_sops']
+            if sop['filename'] == r['filename']
+        )
+        formatted.append({
+            'page_id': source_sop['page_id'],
+            'filename': r['filename'],
+            'title': r['title'],
+            'matching_tags': list(r['matching_tags']),
+            'analysis': r['analysis'],
+            'sop_content': source_sop['content']
+        })
+    return {
+        'affected_count': len(formatted),
+        'unaffected_count': len(tagger_result['unaffected_sops']),
+        'unaffected_sops': tagger_result['unaffected_sops'],
+        'results': formatted
+    }
+
+
 @app.route('/')
 def index():
     """Serve the main SOPatch UI."""
@@ -125,44 +164,10 @@ def analyze():
         return _error('Release note is empty.', 400)
 
     try:
-        # Step 1: Load SOPs from Confluence + AI matching
-        tagger_result = run_tagger(release_note_text)
-
-        if not tagger_result['affected_sops']:
-            return jsonify({
-                'affected_count': 0,
-                'unaffected_count': len(tagger_result['unaffected_sops']),
-                'unaffected_sops': tagger_result['unaffected_sops'],
-                'results': [],
-                'message': 'No SOPs were affected by this release note.'
-            })
-
-        # Step 2: Claude analysis on each affected SOP
-        results = analyze_all_sops(release_note_text, tagger_result['affected_sops'])
-
-        formatted = []
-        for r in results:
-            source_sop = next(
-                sop for sop in tagger_result['affected_sops']
-                if sop['filename'] == r['filename']
-            )
-            formatted.append({
-                'page_id': source_sop['page_id'],
-                'filename': r['filename'],
-                'title': r['title'],
-                'matching_tags': list(r['matching_tags']),
-                'analysis': r['analysis'],
-                'sop_content': source_sop['content']
-            })
-
-        log.info("analyze.done", affected=len(formatted),
-                 unaffected=len(tagger_result['unaffected_sops']))
-        return jsonify({
-            'affected_count': len(formatted),
-            'unaffected_count': len(tagger_result['unaffected_sops']),
-            'unaffected_sops': tagger_result['unaffected_sops'],
-            'results': formatted
-        })
+        result = _analyze_release_note(release_note_text)
+        log.info("analyze.done", affected=result['affected_count'],
+                 unaffected=result['unaffected_count'])
+        return jsonify(result)
 
     except anthropic.APIError as e:
         log.error("analyze.llm_error", error=str(e))
@@ -246,6 +251,55 @@ def refine():
     except Exception as e:
         log.error("refine.unexpected", error=str(e))
         return _error('Something went wrong while refining. Please try again.', 500)
+
+
+@app.route('/webhook/jira', methods=['POST'])
+def jira_webhook():
+    """
+    Automated trigger. Jira posts here when a version ships or an issue is
+    labelled a policy or process change. SOPatch runs itself and notifies a
+    reviewer, instead of waiting for a human to paste a release note.
+    """
+    secret = os.environ.get('JIRA_WEBHOOK_SECRET')
+    if secret and request.headers.get('X-Webhook-Secret') != secret:
+        return _error('Unauthorized.', 401)
+
+    event = request.get_json(silent=True) or {}
+    if not should_trigger(event):
+        return jsonify({'triggered': False, 'reason': 'event did not match a trigger'})
+
+    change_note = extract_change_note(event).strip()
+    if not change_note:
+        return jsonify({'triggered': False, 'reason': 'no change text in the event'})
+
+    source = source_label(event)
+    try:
+        result = DEMO_ANALYSIS if env_demo_enabled() else _analyze_release_note(change_note)
+    except anthropic.APIError as e:
+        log.error("jira_webhook.llm_error", error=str(e))
+        return _error('The AI service is temporarily unavailable.', 503)
+    except requests.RequestException as e:
+        log.error("jira_webhook.confluence_error", error=str(e))
+        return _error('Could not reach Confluence.', 502)
+    except Exception as e:
+        log.error("jira_webhook.unexpected", error=str(e))
+        return _error('Something went wrong handling the event.', 500)
+
+    message = format_review_notification(source, result)
+    delivery = send_notification(message)
+    log.info("jira_webhook.triggered", source=source,
+             affected=result.get('affected_count'), channel=delivery['channel'])
+    return jsonify({
+        'triggered': True,
+        'source': source,
+        'change_note_preview': change_note[:280],
+        'affected_count': result.get('affected_count', 0),
+        'notification': {
+            'delivered': delivery['sent'],
+            'channel': delivery['channel'],
+            'message': message,
+        },
+    })
 
 
 if __name__ == '__main__':

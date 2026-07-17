@@ -1,0 +1,7 @@
+{
+  "webhookEvent": "jira:version_released",
+  "version": {
+    "name": "v3.1",
+    "description": "AI Chat Assistant launch. Unresolved chat queries are escalated to Zendesk tagged [chat-escalation]. The SLA clock for chat-escalated tickets starts when the chatbot fails to resolve, not when the agent picks up. Weekly reporting metrics must be rebaselined for the expected volume drop."
+  }
+}

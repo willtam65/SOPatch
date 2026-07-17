@@ -112,6 +112,28 @@ Confluence push is replaced with a demo notice (nothing is sent to Confluence).
 With valid credentials and Demo Mode off, the app runs the real live flow exactly
 as normal.
 
+## Automated trigger (Jira)
+
+Pasting a release note by hand is the thing the tool exists to stop you
+forgetting, so SOPatch can start itself. Point a Jira webhook at
+`POST /webhook/jira`. When a version is released, or an issue is labelled
+`policy-change` / `process-change` / `sop-update`, SOPatch reads the change note
+(handling Jira Cloud's ADF format), runs the analysis, and notifies a reviewer.
+The notification goes to Slack when `SLACK_WEBHOOK_URL` is set, otherwise it is
+logged, so the whole loop is demonstrable with no external service.
+
+```bash
+# Demo Mode: fire the trigger with the bundled sample Jira payload.
+SOPATCH_DEMO=1 python3 app.py &
+curl -X POST http://localhost:5001/webhook/jira \
+  -H 'Content-Type: application/json' \
+  -d @data/sample_jira_webhook.json
+```
+
+Set `JIRA_WEBHOOK_SECRET` to require a matching `X-Webhook-Secret` header. The
+next step (see [ROADMAP.md](ROADMAP.md)) is a live Jira OAuth connection and real
+Slack/email delivery.
+
 ## Deploy
 
 The public demo runs in Demo Mode (no keys, no external calls), so it's safe to
