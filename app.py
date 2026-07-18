@@ -312,6 +312,10 @@ def jira_webhook():
         'source': source,
         'change_note_preview': change_note[:280],
         'affected_count': result.get('affected_count', 0),
+        # Full analysis payload so a programmatic caller (or the demo UI) can
+        # render the flagged SOPs from the same call, without a second request.
+        # Jira itself ignores the response body.
+        'result': result,
         'notification': {
             'delivered': delivery['sent'],
             'channel': delivery['channel'],

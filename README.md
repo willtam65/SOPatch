@@ -148,6 +148,11 @@ The queue at `/reviews` lists every run and its status. It is backed by SQLite
 from the standard library, so there is no extra dependency and the demo needs no
 database to run.
 
+In Demo Mode the dashboard's **Simulate a Jira release** button posts to the real
+`/webhook/jira` endpoint, so it creates a genuine persisted review and links
+straight to it. The whole loop (detect, analyze, ground, notify, review, approve,
+audit) is demonstrable in the browser with no external service and no curl.
+
 ```bash
 SOPATCH_DEMO=1 python3 app.py &
 curl -sX POST http://localhost:5001/webhook/jira \

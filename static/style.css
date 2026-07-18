@@ -151,6 +151,17 @@ input:focus-visible, [contenteditable="true"]:focus-visible {
 .nav-tab:hover { background: var(--surface-2); color: var(--text); }
 .nav-tab.active { background: var(--accent-bg); color: var(--accent); border-color: var(--border); }
 
+/* Real "open the review" affordances after a simulated Jira release. */
+.auto-review-link { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.auto-review-link:hover { text-decoration: underline; }
+.slack-review-btn {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+  font-size: 13px; font-weight: 600; color: #fff; background: var(--brand);
+  padding: 7px 13px; border-radius: 7px; text-decoration: none;
+}
+.slack-review-btn:hover { background: var(--brand-700); }
+.slack-review-btn i { font-size: 15px; }
+
 /* ── Demo banner ── */
 .demo-banner {
   background: var(--warn-bg);

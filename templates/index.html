@@ -130,6 +130,10 @@
   let analysisResults = [];
   let currentReleaseNote = '';
   let autoTriggered = false;
+  // Set after a simulated Jira release persists a review run, so the auto-run
+  // banner and status can link straight to the real review page.
+  let lastReviewUrl = '';
+  let lastRunId = null;
 
   // ── Theme toggle (overrides the system preference, remembered in localStorage) ──
   function syncThemeIcon() {
@@ -158,21 +162,65 @@
     } else if (stage === 'analyzing') {
       status.innerHTML = '<span class="spinner" style="width:13px;height:13px;display:inline-block;vertical-align:-2px"></span> SOPatch is analyzing the release automatically';
     } else if (stage === 'notified') {
-      status.innerHTML = '<i class="ti ti-circle-check" style="color:var(--success)" aria-hidden="true"></i> Analyzed and grounded. Reviewer notified in <strong>#cx-ops</strong>.';
+      const link = lastReviewUrl
+        ? ` <a href="${lastReviewUrl}" class="auto-review-link">Open review${lastRunId ? ' #' + lastRunId : ''} <i class="ti ti-arrow-right" style="font-size:13px" aria-hidden="true"></i></a>`
+        : '';
+      status.innerHTML = '<i class="ti ti-circle-check" style="color:var(--success)" aria-hidden="true"></i> Analyzed and grounded. Reviewer notified in <strong>#cx-ops</strong>.' + link;
       if (live) live.innerHTML = '<span class="src-dot"></span>Done';
       if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Simulate again'; }
     }
   }
 
+  // The exact shape a Jira "version released" webhook posts. Firing the real
+  // /webhook/jira endpoint (not a fake) is what makes the simulate button
+  // create a genuine, persisted review the reviewer can open and approve.
+  const SAMPLE_JIRA_EVENT = {
+    webhookEvent: 'jira:version_released',
+    version: {
+      name: 'v3.1',
+      description: 'AI Chat Assistant launch. Unresolved chat queries are escalated to Zendesk tagged [chat-escalation]. The SLA clock for chat-escalated tickets starts when the chatbot fails to resolve, not when the agent picks up. Weekly reporting metrics must be rebaselined for the expected volume drop.'
+    }
+  };
+
   async function simulateJiraRelease() {
     const btn = document.getElementById('btn-simulate');
     if (btn) btn.disabled = true;
+    hideError();
     setAutoStatus('detected');
     await sleep(950);
     setAutoStatus('analyzing');
     await sleep(450);
-    await runAnalysis(true);
-    setAutoStatus('notified');
+
+    setLoading(true);
+    showSkeleton();
+    try {
+      // The same call Jira makes. In demo mode the server returns the bundled
+      // analysis and persists a review run, so the loop is real end to end.
+      const response = await fetch('/webhook/jira', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(SAMPLE_JIRA_EVENT)
+      });
+      const data = await response.json();
+      if (!data.triggered || !data.result) {
+        throw new Error(data.error || 'The webhook did not return an analysis.');
+      }
+      lastReviewUrl = data.review_url || '';
+      lastRunId = data.run_id || null;
+      autoTriggered = true;
+      analysisResults = data.result.results;
+      renderResults(data.result);
+      setAutoStatus('notified');
+    } catch (err) {
+      console.error('SOPatch simulate error:', err);
+      showError('Something went wrong simulating the release: ' + (err.message || err));
+      clearResults();
+      if (btn) btn.disabled = false;
+      const live = document.getElementById('auto-live');
+      if (live) live.innerHTML = '<span class="pulse-dot"></span>Watching';
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function runAnalysis(isAuto = false) {
@@ -270,6 +318,7 @@
               <div>
                 <div class="slack-name">SOPatch <span class="slack-app">APP</span> <span class="slack-time">just now</span></div>
                 <div class="slack-text">Release <strong>v3.1</strong> made <strong>${data.affected_count} SOP${data.affected_count !== 1 ? 's' : ''}</strong> stale (${sectionsCount} section${sectionsCount !== 1 ? 's' : ''}). Every edit is grounded in the source. Ready for review.</div>
+                ${lastReviewUrl ? `<a class="slack-review-btn" href="${lastReviewUrl}"><i class="ti ti-inbox" aria-hidden="true"></i>Open review${lastRunId ? ' #' + lastRunId : ''}</a>` : ''}
               </div>
             </div>
           </div>`;
