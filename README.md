@@ -1,22 +1,53 @@
 # SOPatch
 
-AI-powered SOP update detection. Paste a release note, get flagged sections and suggested rewrites, push directly to Confluence.
+Keeps your Confluence SOPs from silently going stale. SOPatch watches Jira, and
+when a release or policy change ships it flags the affected SOP sections, drafts
+rewrites grounded in the source document, and queues them for a human to approve.
+It runs itself, a person still signs off, and every change is auditable.
 
 [![CI](https://github.com/willtam65/SOPatch/actions/workflows/ci.yml/badge.svg)](https://github.com/willtam65/SOPatch/actions/workflows/ci.yml) ![version](https://img.shields.io/badge/version-0.2-blue) ![Python](https://img.shields.io/badge/python-3.12-green) ![evals](https://img.shields.io/badge/tagger%20eval-20%20cases-informational)
 
-![SOPatch demo: paste a release note, get flagged SOP sections with grounded, review-ready rewrites](docs/demo.png)
+![SOPatch demo: a Jira release flags stale SOP sections with grounded, review-ready rewrites](docs/demo.png)
+
+**More than a wrapper:** a deterministic grounding guard that drops any edit whose
+quoted current wording isn't in the source SOP, a precision and recall eval harness
+for the part that actually matters (which SOPs to touch), and a review queue with an
+append-only audit trail so nothing reaches your wiki unapproved.
 
 ## What it does
 
-When a product release or policy change drops, SOPatch:
+1. **Watches Jira.** A released version, or an issue labelled as a policy or
+   process change, posts to `/webhook/jira` and SOPatch starts on its own. Nobody
+   has to remember to paste anything (you still can, by hand, if you want to).
+2. **Finds the affected SOPs.** It reads your SOPs from Confluence and uses Claude
+   to work out which ones the change makes stale.
+3. **Drafts grounded edits.** For each flagged section it writes a rewrite, then
+   drops any edit whose quoted current wording can't be found in the source SOP, so
+   it never invents a change to your wiki.
+4. **Queues it for a human.** A reviewer is notified with a link to a review page,
+   approves or rejects in one click, and the decision is recorded against them.
+5. **Keeps an audit trail.** Every change is traceable from the Jira source to the
+   SOP edit to the person who approved it, then pushes back to Confluence with
+   version tracking.
 
-1. Reads all your SOPs live from Confluence
-2. Uses Claude AI to identify which SOPs are affected
-3. Flags the specific outdated sections with explanations
-4. Suggests rewrites for each flagged section, and drops any edit whose quoted
-   "current wording" can't be found in the source SOP (a grounding guard against
-   hallucinated edits)
-5. Pushes approved updates back to Confluence with version tracking
+## How it works
+
+The pipeline is cost-tiered on purpose: cheap classification runs on a small model,
+and the quality-critical rewriting runs on a stronger one. The grounding guard is
+real code, not a prompt instruction, and the human sits between the draft and the
+wiki.
+
+```mermaid
+flowchart LR
+  J["Jira: version released<br/>or labelled issue"] -->|webhook| T["Tagger · Haiku<br/>which SOPs are affected"]
+  C[("Confluence SOPs")] --> T
+  T --> A["Analyzer · Sonnet<br/>draft section rewrites"]
+  A --> G{"Grounding guard<br/>quote exists in source?"}
+  G -->|no| X["drop the edit"]
+  G -->|yes| R["Review queue<br/>+ audit trail"]
+  R --> H["Human approves"]
+  H --> P["Push to Confluence<br/>with version tracking"]
+```
 
 ## Stack
 
@@ -151,7 +182,8 @@ database to run.
 In Demo Mode the dashboard's **Simulate a Jira release** button posts to the real
 `/webhook/jira` endpoint, so it creates a genuine persisted review and links
 straight to it. The whole loop (detect, analyze, ground, notify, review, approve,
-audit) is demonstrable in the browser with no external service and no curl.
+audit) is demonstrable in the browser with no external service and no curl. There
+is a shot by shot walkthrough in [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 
 ```bash
 SOPATCH_DEMO=1 python3 app.py &
