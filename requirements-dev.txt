@@ -1,3 +1,5 @@
-# Dev/test dependencies (not needed to run the app).
-#   pip install -r requirements-dev.txt
-pytest
+# Dev-only tooling. Not needed to run SOPatch.
+-r requirements.txt
+
+pytest>=8,<9
+playwright>=1.47,<2   # scripts/shoot_docs.py regenerates the docs screenshots

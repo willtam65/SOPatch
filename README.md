@@ -183,6 +183,15 @@ change that triggered it, every flagged SOP with a before/after of each drafted
 edit, and Approve / Reject controls. Approving or rejecting is one click and is
 attributed to the reviewer with a timestamp.
 
+![The review queue: every automated run with its status](docs/review-queue.png)
+
+Approving is also what ships the edit. Each flagged SOP is pushed to Confluence
+with version tracking and audited individually, so if one page fails the record
+still shows exactly which SOPs landed and which did not, instead of the whole
+approval failing.
+
+![A review awaiting approval, with the before and after of each drafted edit](docs/review-page.png)
+
 Every step is written to an append-only audit trail, so a change is traceable
 end to end: the Jira source, the SOPs it flagged, and who approved it and when.
 The queue at `/reviews` lists every run and its status. It is backed by SQLite
@@ -194,6 +203,12 @@ In Demo Mode the dashboard's **Simulate a Jira release** button posts to the rea
 straight to it. The whole loop (detect, analyze, ground, notify, review, approve,
 audit) is demonstrable in the browser with no external service and no curl. There
 is a shot by shot walkthrough in [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+
+The screenshots in this README are generated, not hand-captured: `python
+scripts/shoot_docs.py` boots the demo against a throwaway database, seeds a
+representative queue, drives the real UI and writes the PNGs. Screenshots rot the
+moment the UI moves, so it seemed better to make them reproducible than to
+remember to retake them.
 
 ```bash
 SOPATCH_DEMO=1 python3 app.py &

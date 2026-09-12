@@ -30,6 +30,10 @@ ship only once design partners have shown the problem is worth paying to solve.
   before/after of every drafted edit, and Approve or Reject is one click,
   attributed to the reviewer with a timestamp. Every step is written to an
   append-only audit trail, traceable from the Jira source to the approval.
+- Approval ships the edit. Approving a run pushes each flagged SOP to Confluence
+  with version tracking and audits every page individually, so a partial failure
+  records exactly which SOPs landed and which did not instead of failing the
+  whole approval. Demo Mode records the intent and sends nothing.
 
 ## Next: finish making it run itself
 
@@ -38,9 +42,8 @@ run is recorded and approved through the review queue. What remains is wiring th
 trigger to live services and making it multi-tenant.
 
 - **Deliver and connect for real.** Send the notification to real Slack or email
-  (it logs today when unconfigured), connect a live Jira via OAuth rather than an
-  unauthenticated webhook, and push the approved edits to Confluence on approval
-  (approval is recorded today; the push is still the manual step from the app).
+  (it logs today when unconfigured), and connect a live Jira via OAuth rather than
+  an unauthenticated webhook.
 - **The foundation that trigger needs.** Real login (SSO), a workspace model so
   one customer's SOPs and credentials are isolated, and per-tenant encrypted
   secrets in place of the single shared credential.

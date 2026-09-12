@@ -346,9 +346,44 @@ def review_page(run_id):
                            demo_mode=env_demo_enabled())
 
 
+def _push_approved_run(run_id, run):
+    """Push an approved run's edits to Confluence, one page per flagged SOP.
+
+    Approval is the moment the human takes responsibility for the edit, so it is
+    also the moment the edit ships. Every page is audited individually: a partial
+    failure leaves a record of exactly which SOPs landed and which did not,
+    rather than failing the whole approval. Demo Mode never touches Confluence.
+    """
+    results = run.get('result', {}).get('results', [])
+    if env_demo_enabled():
+        store.record_event(run_id, 'push_skipped', actor='system',
+                           detail='demo mode, nothing sent to Confluence')
+        return {'demo': True, 'attempted': 0, 'pushed': 0, 'failed': 0}
+
+    creds = get_credentials()
+    pushed, failed = 0, 0
+    for r in results:
+        page_id = (r.get('page_id') or '').strip()
+        analysis = (r.get('analysis') or '').strip()
+        title = r.get('title', 'SOP')
+        if not page_id or not analysis:
+            continue
+        try:
+            out = push_to_confluence(page_id, analysis, creds)
+            pushed += 1
+            store.record_event(
+                run_id, 'pushed', actor='system',
+                detail=f"{title} -> v{out.get('new_version')} {out.get('url', '')}".strip())
+        except Exception as e:
+            failed += 1
+            log.error("review.push_error", run_id=run_id, page_id=page_id, error=str(e))
+            store.record_event(run_id, 'push_failed', actor='system', detail=f"{title}: {e}")
+    return {'demo': False, 'attempted': pushed + failed, 'pushed': pushed, 'failed': failed}
+
+
 @app.route('/review/<int:run_id>/decision', methods=['POST'])
 def review_decision(run_id):
-    """Record an approve/reject decision on a run and append an audit event."""
+    """Record an approve/reject decision, and on approval push the edits."""
     data = request.get_json(silent=True) or request.form.to_dict() or {}
     try:
         req = DecisionRequest(**data)
@@ -358,12 +393,17 @@ def review_decision(run_id):
     updated = store.set_decision(run_id, req.decision, actor=req.approver.strip() or 'reviewer')
     if updated is None:
         return _error('Review not found.', 404)
-    log.info("review.decision", run_id=run_id, decision=req.decision, approver=req.approver)
+
+    push = _push_approved_run(run_id, updated) if req.decision == 'approved' else None
+    log.info("review.decision", run_id=run_id, decision=req.decision,
+             approver=req.approver, pushed=(push or {}).get('pushed'))
     return jsonify({
         'run_id': run_id,
         'status': updated['status'],
         'decided_at': updated['decided_at'],
         'approver': updated['approver'],
+        'push': push,
+        'audit': store.get_run(run_id)['audit'],
     })
 
 

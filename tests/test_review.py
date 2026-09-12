@@ -6,6 +6,7 @@ import pytest
 
 import app as app_module
 from core.store import ReviewStore
+from demo_data import DEMO_ANALYSIS
 
 VERSION_EVENT = {
     "webhookEvent": "jira:version_released",
@@ -64,6 +65,48 @@ def test_decision_rejects(client):
     run_id = _fire_webhook(client).get_json()["run_id"]
     dec = client.post(f"/review/{run_id}/decision", json={"decision": "rejected"})
     assert dec.get_json()["status"] == "rejected"
+
+
+def test_approval_in_demo_mode_never_pushes(client):
+    """Demo Mode must record the intent to push without touching Confluence."""
+    run_id = _fire_webhook(client).get_json()["run_id"]
+    body = client.post(f"/review/{run_id}/decision", json={"decision": "approved"}).get_json()
+    assert body["push"]["demo"] is True
+    assert body["push"]["pushed"] == 0
+    assert "push_skipped" in [e["event"] for e in body["audit"]]
+
+
+def test_rejection_never_pushes(client):
+    run_id = _fire_webhook(client).get_json()["run_id"]
+    body = client.post(f"/review/{run_id}/decision", json={"decision": "rejected"}).get_json()
+    assert body["push"] is None
+    assert not [e for e in body["audit"] if e["event"].startswith("push")]
+
+
+def test_approval_pushes_each_sop_and_audits_failures(client, monkeypatch, tmp_path):
+    """Live path: every flagged SOP is pushed and audited, and one page failing
+    does not lose the record of the ones that succeeded."""
+    monkeypatch.delenv("SOPATCH_DEMO", raising=False)
+    monkeypatch.setattr(app_module, "get_credentials", lambda: {"email": "e", "api_token": "t"})
+
+    calls = []
+
+    def fake_push(page_id, analysis, creds):
+        calls.append(page_id)
+        if page_id == "demo-rep-002":
+            raise RuntimeError("Confluence said no")
+        return {"title": "T", "new_version": 3, "url": "https://x/y"}
+
+    monkeypatch.setattr(app_module, "push_to_confluence", fake_push)
+    # Build the run directly so the webhook does not need demo mode to produce it.
+    run_id = app_module.store.create_run("Jira release v3.1", "note", DEMO_ANALYSIS)
+
+    body = client.post(f"/review/{run_id}/decision", json={"decision": "approved"}).get_json()
+    assert len(calls) == 3
+    assert body["push"] == {"demo": False, "attempted": 3, "pushed": 2, "failed": 1}
+    events = [e["event"] for e in body["audit"]]
+    assert events.count("pushed") == 2
+    assert events.count("push_failed") == 1
 
 
 def test_bad_decision_is_400(client):

@@ -173,7 +173,7 @@
     {% if run.status == 'pending' %}
     <button class="btn btn-approve" id="btn-approve" onclick="decide('approved')"><i class="ti ti-check" aria-hidden="true"></i>Approve edits</button>
     <button class="btn btn-reject" id="btn-reject" onclick="decide('rejected')"><i class="ti ti-x" aria-hidden="true"></i>Reject</button>
-    <span class="decided-note" id="decide-hint">{% if demo_mode %}Demo: your decision is recorded and audited; nothing is pushed to Confluence.{% else %}Approving records the decision. The live push to Confluence is the next step.{% endif %}</span>
+    <span class="decided-note" id="decide-hint">{% if demo_mode %}Demo: your decision is recorded and audited; nothing is pushed to Confluence.{% else %}Approving records the decision and pushes the approved edits to Confluence.{% endif %}</span>
     {% else %}
     <span class="decided-note"><i class="ti {{ 'ti-circle-check' if run.status == 'approved' else 'ti-circle-x' }}" aria-hidden="true"></i> {{ run.status | capitalize }} by {{ run.approver }} at {{ run.decided_at }}.</span>
     {% endif %}
@@ -222,13 +222,31 @@
         badge.className = 'status-badge status-' + cls;
         badge.innerHTML = `<i class="ti ${cls === 'approved' ? 'ti-circle-check' : 'ti-circle-x'}"></i> ${data.status}`;
       }
+      // Say what actually happened to the edits, not just that a button was clicked.
+      let pushNote = '';
+      const p = data.push;
+      if (p && p.demo) {
+        pushNote = ' Demo mode, so nothing was sent to Confluence.';
+      } else if (p && p.attempted) {
+        pushNote = ` Pushed ${p.pushed} of ${p.attempted} SOP(s) to Confluence` +
+                   (p.failed ? `, ${p.failed} failed (see the audit trail).` : '.');
+      }
       document.getElementById('decision-bar').innerHTML =
-        `<span class="decided-note"><i class="ti ${cls === 'approved' ? 'ti-circle-check' : 'ti-circle-x'}"></i> ${data.status[0].toUpperCase()+data.status.slice(1)} by ${data.approver} at ${data.decided_at}.</span>`;
+        `<span class="decided-note"><i class="ti ${cls === 'approved' ? 'ti-circle-check' : 'ti-circle-x'}"></i> ${data.status[0].toUpperCase()+data.status.slice(1)} by ${data.approver} at ${data.decided_at}.${pushNote}</span>`;
+
+      // Re-render the audit trail from the server so the push events show up too.
       const ul = document.getElementById('audit-list');
-      if (ul) {
-        const li = document.createElement('li');
-        li.innerHTML = `<span class="ts">${data.decided_at}</span> <span class="ev">${data.status}</span> <span>&middot; ${data.approver}</span>`;
-        ul.appendChild(li);
+      if (ul && Array.isArray(data.audit)) {
+        ul.innerHTML = '';
+        for (const e of data.audit) {
+          const li = document.createElement('li');
+          const ts = document.createElement('span'); ts.className = 'ts'; ts.textContent = e.at;
+          const ev = document.createElement('span'); ev.className = 'ev'; ev.textContent = e.event;
+          const de = document.createElement('span');
+          de.textContent = e.detail + (e.actor && e.actor !== 'system' ? ` · ${e.actor}` : '');
+          li.append(ts, ' ', ev, ' ', de);
+          ul.appendChild(li);
+        }
       }
     } catch (e) {
       if (approve) approve.disabled = false;
