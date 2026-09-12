@@ -81,10 +81,11 @@ variable is the matcher:
 | Exact string | 1.00 | 0.81 | 0.90 | 12/14 |
 | Token-aware | 1.00 | 1.00 | 1.00 | 14/14 |
 
-End to end on the full set (now 20 labelled cases, run live) it scores around
-**precision 0.95, recall 0.95**, give or take a little run to run since tag
-extraction is non-deterministic. The misses are SOPs the release note really
-affected, but whose labels the model's extracted tags didn't happen to overlap.
+End to end on the full set (20 labelled cases, run live on 2026-09-12) it scores
+**precision 1.00, recall 0.95, F1 0.98, 19/20 exact**, give or take a little run
+to run since tag extraction is non-deterministic. The one miss is an adversarial
+case where an SOP was renamed, so the model's extracted tags didn't overlap the
+gold label: a retrieval miss, not a reasoning one.
 
 The fix for that is matching on document content, not label strings. At a few
 dozen SOPs a vector index is overkill, so instead there's an optional **content
@@ -92,21 +93,30 @@ gate** (`SOPATCH_CONTENT_GATE=1`, or `run_eval --gate`): a second pass that asks
 the model which of the label-missed SOPs are actually affected, reading their
 content. Measured, it's a deliberate tradeoff, not a free win:
 
-| Matching | Precision | Recall | F1 |
-| --- | --- | --- | --- |
-| Label match (default) | ~0.95 | ~0.95 | ~0.95 |
-| Label match + content gate | ~0.88 | ~1.00 | ~0.93 |
+| Matching | Precision | Recall | F1 | Exact-match |
+| --- | --- | --- | --- | --- |
+| Label match (default) | 1.00 | 0.95 | 0.98 | 19/20 |
+| Label match + content gate | 0.68 | 1.00 | 0.81 | 10/20 |
 
-The gate catches every stale SOP (recall ~1.00) but over-flags a few tangential
-ones, lowering precision and adding a call per analysis. That F1 cost isn't
-worth it for most runs, so it's left off by default and turned on when recall
-matters more than a reviewer dismissing the occasional false alarm. Scoring is
-pure and unit-tested (`pytest`), so CI runs it without secrets.
+The gate catches every stale SOP (recall 1.00) but over-flags badly, and the cost
+of that got worse, not better, when the models were refreshed: precision on this
+set fell from about 0.88 to 0.68. Both rows are single live runs and tag
+extraction is non-deterministic, so treat them as a direction rather than a
+decimal. The direction is clear enough, and it is the reason the gate stays off
+by default: doubling a reviewer's false alarms to catch one more stale SOP is a
+bad trade when a human reads every flag anyway. It is there behind a flag for the
+case where a missed SOP costs more than a dismissed one. Scoring is pure and
+unit-tested (`pytest`), so CI runs it without secrets.
 
 The eval also gates cost. The pipeline runs tag extraction and the content gate
 on Haiku and the SOP analysis on Sonnet, rather than Opus across the board,
 which cuts token cost by roughly 75% with no measurable accuracy drop on this
 set (re-running the eval after the switch is what confirmed it).
+
+The same eval is what makes a model upgrade a decision instead of a guess. Moving
+the analysis tier from Sonnet 4.6 to Sonnet 5 on 2026-09-12 cut that tier's price
+from $3/$15 to $2/$10 per Mtok, another third off, and the eval was re-run live
+before and after to confirm accuracy held rather than assuming it.
 
 ## Setup
 

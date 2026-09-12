@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-06-28T03:57:28.103646+00:00",
-  "model": "claude-opus-4-8",
+  "generated_at": "2026-09-12T23:09:30.762405+00:00",
+  "model": "claude-sonnet-5",
   "summary": {
     "cases": 20,
     "tp": 21,
-    "fp": 3,
+    "fp": 10,
     "fn": 0,
-    "precision": 0.875,
+    "precision": 0.6774193548387096,
     "recall": 1.0,
-    "f1": 0.9333333333333333,
-    "exact_match": 17,
-    "exact_match_rate": 0.85
+    "f1": 0.8076923076923077,
+    "exact_match": 10,
+    "exact_match_rate": 0.5
   },
   "cases": [
     {
@@ -19,13 +19,13 @@
       "hard": false,
       "extracted_tags": [
         "agent-qa-scoring",
-        "chat-escalation-handling",
-        "escalation-ticket-tagging",
-        "qa-checklist-update",
-        "sla-clock-start-rules",
-        "ticket-volume-forecasting",
-        "tier-1-query-triage",
-        "weekly-reporting-rebaseline"
+        "chat-escalation-workflow",
+        "chatbot-response-review",
+        "metrics-rebaselining",
+        "sla-clock-calculation",
+        "ticket-tagging-standards",
+        "tier-1-query-handling",
+        "weekly-reporting"
       ],
       "predicted": [
         "qa",
@@ -52,16 +52,14 @@
       "summary": "SLA clock start rule changes",
       "hard": false,
       "extracted_tags": [
-        "first-response-tracking",
         "response-time-compliance",
         "sla-breach-review",
         "sla-calculation-methodology",
-        "sla-clock-configuration",
-        "ticket-response-time-reporting"
+        "sla-clock-start-time"
       ],
       "predicted": [
-        "sla",
-        "triage"
+        "reporting",
+        "sla"
       ],
       "gold": [
         "sla"
@@ -71,7 +69,7 @@
       "fn": 0,
       "exact_match": false,
       "false_positives": [
-        "triage"
+        "reporting"
       ],
       "false_negatives": []
     },
@@ -80,24 +78,26 @@
       "summary": "Inbound routing / priority matrix update",
       "hard": false,
       "extracted_tags": [
-        "inbound-ticket-routing",
-        "p1-escalation",
-        "priority-assignment",
+        "agent-assignment-rules",
+        "inbound-ticket-triage",
+        "priority-assignment-automation",
         "queue-management",
-        "senior-agent-routing",
-        "ticket-intake"
+        "ticket-intake-routing"
       ],
       "predicted": [
+        "sla",
         "triage"
       ],
       "gold": [
         "triage"
       ],
       "tp": 1,
-      "fp": 0,
+      "fp": 1,
       "fn": 0,
-      "exact_match": true,
-      "false_positives": [],
+      "exact_match": false,
+      "false_positives": [
+        "sla"
+      ],
       "false_negatives": []
     },
     {
@@ -105,12 +105,10 @@
       "summary": "New QA scorecard item",
       "hard": false,
       "extracted_tags": [
+        "agent-performance-evaluation",
         "agent-qa-scoring",
-        "empathy-scoring",
-        "qa-reviewer-calibration",
-        "qa-scorecard-update",
-        "response-quality-review",
-        "scorecard-rubric-update"
+        "qa-scorecard-updates",
+        "response-quality-review"
       ],
       "predicted": [
         "qa"
@@ -130,11 +128,11 @@
       "summary": "Weekly report adds a metric / trend rule",
       "hard": false,
       "extracted_tags": [
-        "metric-flagging-threshold",
+        "metric-flagging-thresholds",
         "nps-tracking",
         "report-assembly",
-        "trend-analysis",
-        "weekly-cx-reporting"
+        "trend-analysis-review",
+        "weekly-reporting"
       ],
       "predicted": [
         "reporting"
@@ -154,9 +152,8 @@
       "summary": "Office relocation (should flag nothing)",
       "hard": false,
       "extracted_tags": [
-        "badge-access-provisioning",
-        "desk-assignment",
-        "facilities-access-management",
+        "badge-access-issuance",
+        "desk-assignment-coordination",
         "office-relocation"
       ],
       "predicted": [],
@@ -173,12 +170,10 @@
       "summary": "HR parental-leave policy (should flag nothing)",
       "hard": false,
       "extracted_tags": [
-        "leave-approval-workflow",
-        "leave-balance-tracking",
-        "leave-eligibility-verification",
-        "parental-leave-request",
-        "payroll-leave-processing",
-        "people-ops-handbook-update"
+        "hr-policy-update",
+        "parental-leave-eligibility",
+        "parental-leave-request-process",
+        "people-ops-handbook-maintenance"
       ],
       "predicted": [],
       "gold": [],
@@ -196,8 +191,8 @@
       "extracted_tags": [
         "balance-reconciliation",
         "billing-provider-migration",
-        "invoice-numbering",
-        "payment-cutover-handling"
+        "cutover-weekend-coordination",
+        "invoice-numbering-update"
       ],
       "predicted": [],
       "gold": [],
@@ -213,14 +208,15 @@
       "summary": "New P0 tier affecting both SLA and triage",
       "hard": false,
       "extracted_tags": [
-        "p0-severity-tagging",
-        "response-time-tracking",
-        "severity-tier-classification",
+        "intake-tagging",
+        "p0-response-tracking",
+        "response-time-sla",
+        "severity-classification",
         "sla-breach-review",
-        "sla-target-configuration",
-        "ticket-intake-triage"
+        "ticket-triage"
       ],
       "predicted": [
+        "reporting",
         "sla",
         "triage"
       ],
@@ -229,10 +225,12 @@
         "triage"
       ],
       "tp": 2,
-      "fp": 0,
+      "fp": 1,
       "fn": 0,
-      "exact_match": true,
-      "false_positives": [],
+      "exact_match": false,
+      "false_positives": [
+        "reporting"
+      ],
       "false_negatives": []
     },
     {
@@ -241,24 +239,27 @@
       "hard": false,
       "extracted_tags": [
         "agent-qa-scoring",
-        "qa-scorecard-assembly",
-        "quality-metrics-reporting",
-        "weekly-cx-report-assembly",
+        "qa-scorecard-process",
+        "quality-metrics-tracking",
+        "report-assembly",
         "weekly-reporting"
       ],
       "predicted": [
         "qa",
-        "reporting"
+        "reporting",
+        "sla"
       ],
       "gold": [
         "qa",
         "reporting"
       ],
       "tp": 2,
-      "fp": 0,
+      "fp": 1,
       "fn": 0,
-      "exact_match": true,
-      "false_positives": [],
+      "exact_match": false,
+      "false_positives": [
+        "sla"
+      ],
       "false_negatives": []
     },
     {
@@ -266,13 +267,14 @@
       "summary": "SLA breach stats added to weekly report",
       "hard": false,
       "extracted_tags": [
+        "cx-reporting-template",
+        "report-generation",
         "sla-breach-review",
-        "sla-breach-tracking",
-        "sla-metrics-reporting",
-        "weekly-report-template-update",
+        "sla-metrics-tracking",
         "weekly-reporting"
       ],
       "predicted": [
+        "qa",
         "reporting",
         "sla"
       ],
@@ -281,10 +283,12 @@
         "sla"
       ],
       "tp": 2,
-      "fp": 0,
+      "fp": 1,
       "fn": 0,
-      "exact_match": true,
-      "false_positives": [],
+      "exact_match": false,
+      "false_positives": [
+        "qa"
+      ],
       "false_negatives": []
     },
     {
@@ -292,24 +296,26 @@
       "summary": "Inbound queue moves to a new tool",
       "hard": false,
       "extracted_tags": [
-        "helpdesk-migration",
         "inbound-queue-routing",
-        "inbound-ticket-triage",
-        "queue-assignment-setup",
+        "inbound-triage-workflow",
         "queue-management",
-        "ticket-routing-rules"
+        "routing-rule-configuration",
+        "ticket-distribution"
       ],
       "predicted": [
+        "sla",
         "triage"
       ],
       "gold": [
         "triage"
       ],
       "tp": 1,
-      "fp": 0,
+      "fp": 1,
       "fn": 0,
-      "exact_match": true,
-      "false_positives": [],
+      "exact_match": false,
+      "false_positives": [
+        "sla"
+      ],
       "false_negatives": []
     },
     {
@@ -318,12 +324,10 @@
       "hard": true,
       "extracted_tags": [
         "agent-answer-verification",
-        "agent-qa-scoring",
-        "answer-completeness-scoring",
-        "answer-correctness-scoring",
+        "conversation-correctness-scoring",
         "post-resolution-accuracy-audit",
-        "resolved-conversation-review",
-        "senior-reviewer-auditing"
+        "resolved-ticket-review",
+        "senior-reviewer-qa"
       ],
       "predicted": [
         "qa"
@@ -343,11 +347,10 @@
       "summary": "Reporting rebaseline described obliquely (likely missed)",
       "hard": true,
       "extracted_tags": [
-        "benchmark-baseline-update",
-        "channel-mix-analysis",
+        "benchmark-comparison",
+        "channel-shift-tracking",
         "dashboard-annotation",
-        "metric-trend-review",
-        "period-over-period-comparison",
+        "period-over-period-analysis",
         "weekly-reporting"
       ],
       "predicted": [
@@ -368,11 +371,11 @@
       "summary": "SLA clock pauses while waiting on the customer",
       "hard": false,
       "extracted_tags": [
-        "pending-customer-reply-handling",
-        "sla-breach-reporting",
+        "customer-response-tracking",
         "sla-breach-review",
-        "sla-clock-pause",
-        "sla-policy-configuration"
+        "sla-clock-management",
+        "sla-policy-enforcement",
+        "ticket-waiting-state"
       ],
       "predicted": [
         "reporting",
@@ -396,10 +399,9 @@
       "hard": false,
       "extracted_tags": [
         "agent-qa-scoring",
-        "monthly-qa-review",
         "qa-calibration",
-        "qa-rubric-alignment",
-        "reviewer-calibration",
+        "qa-rubric-standardization",
+        "reviewer-alignment",
         "scorecard-consistency"
       ],
       "predicted": [
@@ -419,13 +421,7 @@
       "id": "facilities_fire_drill",
       "summary": "Fire drill notice (should flag nothing)",
       "hard": false,
-      "extracted_tags": [
-        "assembly-point-muster",
-        "emergency-evacuation-procedure",
-        "facilities-safety-drill",
-        "fire-drill-evacuation",
-        "stairwell-evacuation-routing"
-      ],
+      "extracted_tags": [],
       "predicted": [],
       "gold": [],
       "tp": 0,
@@ -440,12 +436,11 @@
       "summary": "QA described as listening to call recordings (token-disjoint)",
       "hard": true,
       "extracted_tags": [
-        "agent-coaching-feedback",
+        "agent-performance-evaluation",
         "agent-qa-scoring",
-        "call-monitoring",
         "call-recording-review",
-        "interaction-grading",
-        "quality-sampling"
+        "conversation-quality-assessment",
+        "team-lead-auditing"
       ],
       "predicted": [
         "qa"
@@ -465,24 +460,25 @@
       "summary": "Reporting described obliquely as 'the numbers for leadership' (token-disjoint)",
       "hard": true,
       "extracted_tags": [
-        "leadership-metrics-review",
-        "metrics-compilation",
-        "monday-reporting-prep",
-        "report-data-aggregation",
-        "reporting-baseline-comparison",
-        "weekly-leadership-reporting"
+        "leadership-metrics-compilation",
+        "monday-reporting-workflow",
+        "performance-comparison-methodology",
+        "weekly-reporting"
       ],
       "predicted": [
-        "reporting"
+        "reporting",
+        "sla"
       ],
       "gold": [
         "reporting"
       ],
       "tp": 1,
-      "fp": 0,
+      "fp": 1,
       "fn": 0,
-      "exact_match": true,
-      "false_positives": [],
+      "exact_match": false,
+      "false_positives": [
+        "sla"
+      ],
       "false_negatives": []
     },
     {
@@ -490,24 +486,25 @@
       "summary": "Triage described as sorting incoming requests (token-disjoint)",
       "hard": true,
       "extracted_tags": [
-        "priority-assignment",
-        "queue-assignment",
-        "request-intake",
+        "request-prioritization",
         "severity-classification",
-        "ticket-routing",
-        "ticket-triage"
+        "ticket-intake-triage",
+        "ticket-routing"
       ],
       "predicted": [
+        "sla",
         "triage"
       ],
       "gold": [
         "triage"
       ],
       "tp": 1,
-      "fp": 0,
+      "fp": 1,
       "fn": 0,
-      "exact_match": true,
-      "false_positives": [],
+      "exact_match": false,
+      "false_positives": [
+        "sla"
+      ],
       "false_negatives": []
     }
   ]
